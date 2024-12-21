@@ -135,8 +135,8 @@ def train(args, model, enc=False):
 
     co_transform = MyCoTransform(enc, augment=True, height=args.height)#1024)
     co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
-    dataset_train = cityscapes(args.datadir, co_transform, 'train')
-    dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
+    dataset_train = cityscapes(args.datadir, co_transform, 'train/aachen')
+    dataset_val = cityscapes(args.datadir, co_transform_val, 'val/frankfurt')
 
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
