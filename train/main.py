@@ -81,309 +81,125 @@ class CrossEntropyLoss2d(torch.nn.Module):
 
 
 
+import os
+import torch
+import time
+from torch.utils.data import DataLoader
+from torch.autograd import Variable
+from torch.optim import Adam, lr_scheduler
+from my_transforms import MyCoTransform  # Assumendo che sia definita
+from my_dataset import cityscapes  # Assumendo che sia definita
+from my_metrics import iouEval  # Assumendo che sia definita
+from my_loss import CrossEntropyLoss2d  # Assumendo che sia definita
+
 def train(args, model, enc=False):
+    # Inizializzazione
     best_acc = 0
-
-    #TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
-    #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
-
+    NUM_CLASSES = 20  # Modifica con il numero corretto di classi
     weight = torch.ones(NUM_CLASSES)
-    if (enc):
-        weight[0] = 2.3653597831726	
-        weight[1] = 4.4237880706787	
-        weight[2] = 2.9691488742828	
-        weight[3] = 5.3442072868347	
-        weight[4] = 5.2983593940735	
-        weight[5] = 5.2275490760803	
-        weight[6] = 5.4394111633301	
-        weight[7] = 5.3659925460815	
-        weight[8] = 3.4170460700989	
-        weight[9] = 5.2414722442627	
-        weight[10] = 4.7376127243042	
-        weight[11] = 5.2286224365234	
-        weight[12] = 5.455126285553	
-        weight[13] = 4.3019247055054	
-        weight[14] = 5.4264230728149	
-        weight[15] = 5.4331531524658	
-        weight[16] = 5.433765411377	
-        weight[17] = 5.4631009101868	
-        weight[18] = 5.3947434425354
-    else:
-        weight[0] = 2.8149201869965	
-        weight[1] = 6.9850029945374	
-        weight[2] = 3.7890393733978	
-        weight[3] = 9.9428062438965	
-        weight[4] = 9.7702074050903	
-        weight[5] = 9.5110931396484	
-        weight[6] = 10.311357498169	
-        weight[7] = 10.026463508606	
-        weight[8] = 4.6323022842407	
-        weight[9] = 9.5608062744141	
-        weight[10] = 7.8698215484619	
-        weight[11] = 9.5168733596802	
-        weight[12] = 10.373730659485	
-        weight[13] = 6.6616044044495	
-        weight[14] = 10.260489463806	
-        weight[15] = 10.287888526917	
-        weight[16] = 10.289801597595	
-        weight[17] = 10.405355453491	
-        weight[18] = 10.138095855713	
+    savedir = f'../save/{args.savedir}'
+    os.makedirs(savedir, exist_ok=True)
+    
+    # Configura pesi per il loss
+    try:
+        if enc:
+            weight[:19] = torch.tensor([
+                2.3654, 4.4238, 2.9691, 5.3442, 5.2984, 5.2275, 5.4394, 5.3660, 
+                3.4170, 5.2415, 4.7376, 5.2286, 5.4551, 4.3019, 5.4264, 5.4332, 
+                5.4338, 5.4631, 5.3947
+            ])
+        else:
+            weight[:19] = torch.tensor([
+                2.8149, 6.9850, 3.7890, 9.9428, 9.7702, 9.5111, 10.3114, 10.0265, 
+                4.6323, 9.5608, 7.8698, 9.5169, 10.3737, 6.6616, 10.2605, 10.2879, 
+                10.2898, 10.4054, 10.1381
+            ])
+    except IndexError as e:
+        print("Error setting weights:", e)
+    
+    # Controlla il dataset
+    assert os.path.exists(args.datadir), f"Error: dataset directory '{args.datadir}' not found"
+    co_transform = MyCoTransform(enc, augment=True, height=args.height)
+    co_transform_val = MyCoTransform(enc, augment=False, height=args.height)
 
-    weight[19] = 0
-
-    assert os.path.exists(args.datadir), "Error: datadir (dataset directory) could not be loaded"
-
-    co_transform = MyCoTransform(enc, augment=True, height=args.height)#1024)
-    co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
     dataset_train = cityscapes(args.datadir, co_transform, 'train')
     dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
-
-    print("dataset train: ", dataset_train)
-    print("dataset val: ", dataset_val)
     
+    # Verifica dataset
+    assert len(dataset_train) > 0, "Training dataset is empty!"
+    assert len(dataset_val) > 0, "Validation dataset is empty!"
+
+    # DataLoader
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
+    # Configurazione CUDA
     if args.cuda:
         weight = weight.cuda()
+        model = model.cuda()
+    
     criterion = CrossEntropyLoss2d(weight)
-    print(type(criterion))
-
-    savedir = f'../save/{args.savedir}'
-
-    if (enc):
-        automated_log_path = savedir + "/automated_log_encoder.txt"
-        modeltxtpath = savedir + "/model_encoder.txt"
-    else:
-        automated_log_path = savedir + "/automated_log.txt"
-        modeltxtpath = savedir + "/model.txt"    
-
-    if (not os.path.exists(automated_log_path)):    #dont add first line if it exists 
-        with open(automated_log_path, "a") as myfile:
-            myfile.write("Epoch\t\tTrain-loss\t\tTest-loss\t\tTrain-IoU\t\tTest-IoU\t\tlearningRate")
-
-    with open(modeltxtpath, "w") as myfile:
-        myfile.write(str(model))
-
-
-    #TODO: reduce memory in first gpu: https://discuss.pytorch.org/t/multi-gpu-training-memory-usage-in-balance/4163/4        #https://github.com/pytorch/pytorch/issues/1893
-
-    #optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=2e-4)     ## scheduler 1
-    optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4)      ## scheduler 2
-
+    optimizer = Adam(model.parameters(), lr=5e-4, betas=(0.9, 0.999), eps=1e-8, weight_decay=1e-4)
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: pow((1 - (epoch / args.num_epochs)), 0.9))
     start_epoch = 1
-    if args.resume:
-        #Must load weights, optimizer, epoch and best value. 
-        if enc:
-            filenameCheckpoint = savedir + '/checkpoint_enc.pth.tar'
-        else:
-            filenameCheckpoint = savedir + '/checkpoint.pth.tar'
 
-        assert os.path.exists(filenameCheckpoint), "Error: resume option was used but checkpoint was not found in folder"
-        checkpoint = torch.load(filenameCheckpoint)
-        start_epoch = checkpoint['epoch']
+    # Carica checkpoint se necessario
+    if args.resume:
+        checkpoint_path = os.path.join(savedir, 'checkpoint_enc.pth.tar' if enc else 'checkpoint.pth.tar')
+        assert os.path.exists(checkpoint_path), f"Checkpoint not found at '{checkpoint_path}'"
+        checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
+        start_epoch = checkpoint['epoch'] + 1
         best_acc = checkpoint['best_acc']
-        print("=> Loaded checkpoint at epoch {})".format(checkpoint['epoch']))
+        print(f"Checkpoint loaded from epoch {start_epoch}")
 
-    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5) # set up scheduler     ## scheduler 1
-    lambda1 = lambda epoch: pow((1-((epoch-1)/args.num_epochs)),0.9)  ## scheduler 2
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)                             ## scheduler 2
-
-    if args.visualize and args.steps_plot > 0:
-        board = Dashboard(args.port)
-
-    for epoch in range(start_epoch, args.num_epochs+1):
-        print("----- TRAINING - EPOCH", epoch, "-----")
-
-        scheduler.step(epoch)    ## scheduler 2
-
-        epoch_loss = []
-        time_train = []
-     
-        doIouTrain = args.iouTrain   
-        doIouVal =  args.iouVal      
-
-        if (doIouTrain):
-            iouEvalTrain = iouEval(NUM_CLASSES)
-
-        usedLr = 0
-        for param_group in optimizer.param_groups:
-            print("LEARNING RATE: ", param_group['lr'])
-            usedLr = float(param_group['lr'])
-
+    # Inizio training
+    for epoch in range(start_epoch, args.num_epochs + 1):
         model.train()
+        epoch_loss = []
+        print(f"----- TRAINING - EPOCH {epoch} -----")
+
         for step, (images, labels) in enumerate(loader):
-
-            start_time = time.time()
-            #print (labels.size())
-            #print (np.unique(labels.numpy()))
-            #print("labels: ", np.unique(labels[0].numpy()))
-            #labels = torch.ones(4, 1, 512, 1024).long()
             if args.cuda:
-                images = images.cuda()
-                labels = labels.cuda()
-
-            inputs = Variable(images)
-            targets = Variable(labels)
-            outputs = model(inputs, only_encode=enc)
-
-            #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
+                images, labels = images.cuda(), labels.cuda()
 
             optimizer.zero_grad()
-            loss = criterion(outputs, targets[:, 0])
+            outputs = model(images, only_encode=enc)
+            loss = criterion(outputs, labels[:, 0])
             loss.backward()
             optimizer.step()
-
             epoch_loss.append(loss.item())
-            time_train.append(time.time() - start_time)
 
-            if (doIouTrain):
-                #start_time_iou = time.time()
-                iouEvalTrain.addBatch(outputs.max(1)[1].unsqueeze(1).data, targets.data)
-                #print ("Time to add confusion matrix: ", time.time() - start_time_iou)      
+        # Epoch summary
+        avg_loss = sum(epoch_loss) / len(epoch_loss)
+        print(f"Epoch {epoch} training loss: {avg_loss:.4f}")
 
-            #print(outputs.size())
-            if args.visualize and args.steps_plot > 0 and step % args.steps_plot == 0:
-                start_time_plot = time.time()
-                image = inputs[0].cpu().data
-                #image[0] = image[0] * .229 + .485
-                #image[1] = image[1] * .224 + .456
-                #image[2] = image[2] * .225 + .406
-                #print("output", np.unique(outputs[0].cpu().max(0)[1].data.numpy()))
-                board.image(image, f'input (epoch: {epoch}, step: {step})')
-                if isinstance(outputs, list):   #merge gpu tensors
-                    board.image(color_transform(outputs[0][0].cpu().max(0)[1].data.unsqueeze(0)),
-                    f'output (epoch: {epoch}, step: {step})')
-                else:
-                    board.image(color_transform(outputs[0].cpu().max(0)[1].data.unsqueeze(0)),
-                    f'output (epoch: {epoch}, step: {step})')
-                board.image(color_transform(targets[0].cpu().data),
-                    f'target (epoch: {epoch}, step: {step})')
-                print ("Time to paint images: ", time.time() - start_time_plot)
-            if args.steps_loss > 0 and step % args.steps_loss == 0:
-                average = sum(epoch_loss) / len(epoch_loss)
-                print(f'loss: {average:0.4} (epoch: {epoch}, step: {step})', 
-                        "// Avg time/img: %.4f s" % (sum(time_train) / len(time_train) / args.batch_size))
-
-            
-        average_epoch_loss_train = sum(epoch_loss) / len(epoch_loss)
-        
-        iouTrain = 0
-        if (doIouTrain):
-            iouTrain, iou_classes = iouEvalTrain.getIoU()
-            iouStr = getColorEntry(iouTrain)+'{:0.2f}'.format(iouTrain*100) + '\033[0m'
-            print ("EPOCH IoU on TRAIN set: ", iouStr, "%")  
-
-        #Validate on 500 val images after each epoch of training
-        print("----- VALIDATING - EPOCH", epoch, "-----")
+        # Validation step
         model.eval()
-        epoch_loss_val = []
-        time_val = []
+        with torch.no_grad():
+            val_loss = []
+            for images, labels in loader_val:
+                if args.cuda:
+                    images, labels = images.cuda(), labels.cuda()
+                outputs = model(images, only_encode=enc)
+                val_loss.append(criterion(outputs, labels[:, 0]).item())
+            
+            avg_val_loss = sum(val_loss) / len(val_loss)
+            print(f"Epoch {epoch} validation loss: {avg_val_loss:.4f}")
 
-        if (doIouVal):
-            iouEvalVal = iouEval(NUM_CLASSES)
-
-        for step, (images, labels) in enumerate(loader_val):
-            start_time = time.time()
-            if args.cuda:
-                images = images.cuda()
-                labels = labels.cuda()
-
-            with torch.no_grad():
-                inputs = images
-                targets = labels
-
-            outputs = model(inputs, only_encode=enc) 
-
-            loss = criterion(outputs, targets[:, 0])
-            epoch_loss_val.append(loss.item())
-            time_val.append(time.time() - start_time)
-
-
-            #Add batch to calculate TP, FP and FN for iou estimation
-            if (doIouVal):
-                #start_time_iou = time.time()
-                iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, targets.data)
-                #print ("Time to add confusion matrix: ", time.time() - start_time_iou)
-
-            if args.visualize and args.steps_plot > 0 and step % args.steps_plot == 0:
-                start_time_plot = time.time()
-                image = inputs[0].cpu().data
-                board.image(image, f'VAL input (epoch: {epoch}, step: {step})')
-                if isinstance(outputs, list):   #merge gpu tensors
-                    board.image(color_transform(outputs[0][0].cpu().max(0)[1].data.unsqueeze(0)),
-                    f'VAL output (epoch: {epoch}, step: {step})')
-                else:
-                    board.image(color_transform(outputs[0].cpu().max(0)[1].data.unsqueeze(0)),
-                    f'VAL output (epoch: {epoch}, step: {step})')
-                board.image(color_transform(targets[0].cpu().data),
-                    f'VAL target (epoch: {epoch}, step: {step})')
-                print ("Time to paint images: ", time.time() - start_time_plot)
-            if args.steps_loss > 0 and step % args.steps_loss == 0:
-                average = sum(epoch_loss_val) / len(epoch_loss_val)
-                print(f'VAL loss: {average:0.4} (epoch: {epoch}, step: {step})', 
-                        "// Avg time/img: %.4f s" % (sum(time_val) / len(time_val) / args.batch_size))
-                       
-
-        average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
-        #scheduler.step(average_epoch_loss_val, epoch)  ## scheduler 1   # update lr if needed
-
-        iouVal = 0
-        if (doIouVal):
-            iouVal, iou_classes = iouEvalVal.getIoU()
-            iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
-            print ("EPOCH IoU on VAL set: ", iouStr, "%") 
-           
-
-        # remember best valIoU and save checkpoint
-        if iouVal == 0:
-            current_acc = -average_epoch_loss_val
-        else:
-            current_acc = iouVal 
-        is_best = current_acc > best_acc
-        best_acc = max(current_acc, best_acc)
-        if enc:
-            filenameCheckpoint = savedir + '/checkpoint_enc.pth.tar'
-            filenameBest = savedir + '/model_best_enc.pth.tar'    
-        else:
-            filenameCheckpoint = savedir + '/checkpoint.pth.tar'
-            filenameBest = savedir + '/model_best.pth.tar'
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'arch': str(model),
+        # Save model checkpoint
+        checkpoint = {
+            'epoch': epoch,
             'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
             'best_acc': best_acc,
-            'optimizer' : optimizer.state_dict(),
-        }, is_best, filenameCheckpoint, filenameBest)
-
-        #SAVE MODEL AFTER EPOCH
-        if (enc):
-            filename = f'{savedir}/model_encoder-{epoch:03}.pth'
-            filenamebest = f'{savedir}/model_encoder_best.pth'
-        else:
-            filename = f'{savedir}/model-{epoch:03}.pth'
-            filenamebest = f'{savedir}/model_best.pth'
-        if args.epochs_save > 0 and step > 0 and step % args.epochs_save == 0:
-            torch.save(model.state_dict(), filename)
-            print(f'save: {filename} (epoch: {epoch})')
-        if (is_best):
-            torch.save(model.state_dict(), filenamebest)
-            print(f'save: {filenamebest} (epoch: {epoch})')
-            if (not enc):
-                with open(savedir + "/best.txt", "w") as myfile:
-                    myfile.write("Best epoch is %d, with Val-IoU= %.4f" % (epoch, iouVal))   
-            else:
-                with open(savedir + "/best_encoder.txt", "w") as myfile:
-                    myfile.write("Best epoch is %d, with Val-IoU= %.4f" % (epoch, iouVal))           
-
-        #SAVE TO FILE A ROW WITH THE EPOCH RESULT (train loss, val loss, train IoU, val IoU)
-        #Epoch		Train-loss		Test-loss	Train-IoU	Test-IoU		learningRate
-        with open(automated_log_path, "a") as myfile:
-            myfile.write("\n%d\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.8f" % (epoch, average_epoch_loss_train, average_epoch_loss_val, iouTrain, iouVal, usedLr ))
+        }
+        torch.save(checkpoint, os.path.join(savedir, 'checkpoint.pth.tar'))
+        print(f"Checkpoint saved for epoch {epoch}")
     
-    return(model)   #return model (convenience for encoder-decoder training)
+    return model
+
 
 def save_checkpoint(state, is_best, filenameCheckpoint, filenameBest):
     torch.save(state, filenameCheckpoint)
