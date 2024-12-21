@@ -399,6 +399,7 @@ def main(args):
         myfile.write(str(args))
 
     #Load Model
+    print("model path is: ", model)
     assert os.path.exists(args.model + ".py"), "Error: model definition not found"
     model_file = importlib.import_module(args.model)
     model = model_file.Net(NUM_CLASSES)
