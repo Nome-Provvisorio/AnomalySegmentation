@@ -135,8 +135,8 @@ def train(args, model, enc=False):
 
     co_transform = MyCoTransform(enc, augment=True, height=args.height)#1024)
     co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
-    dataset_train = cityscapes(args.datadir, co_transform, 'train/aachen')
-    dataset_val = cityscapes(args.datadir, co_transform_val, 'val/frankfurt')
+    dataset_train = cityscapes(args.datadir, co_transform, 'train')
+    dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
 
     print("dataset train: ", dataset_train)
     print("dataset val: ", dataset_val)
