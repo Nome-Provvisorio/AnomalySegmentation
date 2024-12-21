@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, CenterCrop, Normalize, Resize, Pad
 from torchvision.transforms import ToTensor, ToPILImage
 
-from dataset import VOC12,cityscapes
+from dataset import VOC12, cityscapes
 from transform import Relabel, ToLabel, Colorize
 from visualize import Dashboard
 
