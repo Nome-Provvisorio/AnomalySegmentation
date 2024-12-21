@@ -72,14 +72,13 @@ class MyCoTransform(object):
 
 
 class CrossEntropyLoss2d(torch.nn.Module):
-
     def __init__(self, weight=None):
         super().__init__()
-
-        self.loss = torch.nn.NLLLoss2d(weight)
+        self.loss = torch.nn.CrossEntropyLoss(weight)
 
     def forward(self, outputs, targets):
-        return self.loss(torch.nn.functional.log_softmax(outputs, dim=1), targets)
+        return self.loss(outputs, targets)
+
 
 
 def train(args, model, enc=False):
@@ -234,7 +233,7 @@ def train(args, model, enc=False):
             loss.backward()
             optimizer.step()
 
-            epoch_loss.append(loss.data[0])
+            epoch_loss.append(loss.item())
             time_train.append(time.time() - start_time)
 
             if (doIouTrain):
@@ -289,12 +288,14 @@ def train(args, model, enc=False):
                 images = images.cuda()
                 labels = labels.cuda()
 
-            inputs = Variable(images, volatile=True)    #volatile flag makes it free backward or outputs for eval
-            targets = Variable(labels, volatile=True)
+            with torch.no_grad():
+                inputs = images
+                targets = labels
+
             outputs = model(inputs, only_encode=enc) 
 
             loss = criterion(outputs, targets[:, 0])
-            epoch_loss_val.append(loss.data[0])
+            epoch_loss_val.append(loss.item())
             time_val.append(time.time() - start_time)
 
 
