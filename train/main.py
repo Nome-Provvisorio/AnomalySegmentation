@@ -481,6 +481,10 @@ def main(args):
         if args.cuda:
             model = torch.nn.DataParallel(model).cuda()
         #When loading encoder reinitialize weights for decoder because they are set to 0 when training dec
+    
+    print("Training dataset path:", args.datadir)
+    print("Files in training directory:", os.listdir(os.path.join(args.datadir, "train")))
+
     model = train(args, model, False)   #Train decoder
     print("========== TRAINING FINISHED ===========")
 
