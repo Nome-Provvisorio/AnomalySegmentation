@@ -62,13 +62,15 @@ class VOC12(Dataset):
 class cityscapes(Dataset):
 
     def __init__(self, root, co_transform=None, subset='train'):
-        self.images_root = os.path.join(root, 'leftImg8bit/')
-        self.labels_root = os.path.join(root, 'gtFine/')
+        self.images_root = os.path.join(root, '')
+        self.labels_root = os.path.join(root, '')
         
         self.images_root += subset
         self.labels_root += subset
 
-        print (self.images_root)
+        # Debug dei percorsi
+        print(f"Images path: {self.images_root}")
+        print(f"Labels path: {self.labels_root}")
         #self.filenames = [image_basename(f) for f in os.listdir(self.images_root) if is_image(f)]
         self.filenames = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.images_root)) for f in fn if is_image(f)]
         self.filenames.sort()
