@@ -400,6 +400,8 @@ def main(args):
 
     #Load Model
     print("model path is: ", args.model)
+    print("Current working directory:", os.getcwd())
+    print("Looking for model file at:", os.path.abspath(args.model + ".py"))
     assert os.path.exists(args.model + ".py"), "Error: model definition not found"
     model_file = importlib.import_module(args.model)
     model = model_file.Net(NUM_CLASSES)
