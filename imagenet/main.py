@@ -153,7 +153,6 @@ def main():
 
         #scheduler.step(prec1, epoch)    #decreases learning rate if prec1 plateaus
 
-
 def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -179,9 +178,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-        losses.update(loss.data[0], input.size(0))
-        top1.update(prec1[0], input.size(0))
-        top5.update(prec5[0], input.size(0))
+        losses.update(loss.item(), input.size(0))  # Fixed: Replaced loss.data[0] with loss.item()
+        top1.update(prec1.item(), input.size(0))   # Fixed: Replaced prec1[0] with prec1.item()
+        top5.update(prec5.item(), input.size(0))   # Fixed: Replaced prec5[0] with prec5.item()
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -201,8 +200,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
                   'Loss {loss.val:.3f} ({loss.avg:.3f})\t'
                   'Prec@1 {top1.val:.2f} ({top1.avg:.2f})\t'
                   'Prec@5 {top5.val:.2f} ({top5.avg:.2f})'.format(
-                   epoch, i, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses, top1=top1, top5=top5, lr=lr))
+                epoch, i, len(train_loader), batch_time=batch_time,
+                data_time=data_time, loss=losses, top1=top1, top5=top5, lr=lr))
+
 
 
 def validate(val_loader, model, criterion):
@@ -216,9 +216,10 @@ def validate(val_loader, model, criterion):
 
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
-        target = target.cuda(async=True)
-        input_var = torch.autograd.Variable(input, volatile=True)
-        target_var = torch.autograd.Variable(target, volatile=True)
+        target = target.cuda()
+        with torch.no_grad():
+            input_var = torch.autograd.Variable(input)
+        target_var = torch.autograd.Variable(target)
 
         # compute output
         output = model(input_var)
@@ -226,9 +227,9 @@ def validate(val_loader, model, criterion):
 
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-        losses.update(loss.data[0], input.size(0))
-        top1.update(prec1[0], input.size(0))
-        top5.update(prec5[0], input.size(0))
+        losses.update(loss.item(), input.size(0))
+        top1.update(prec1.item(), input.size(0))
+        top5.update(prec5.item(), input.size(0))  # Fixed: Using .item() instead of [0]
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -240,13 +241,14 @@ def validate(val_loader, model, criterion):
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                   i, len(val_loader), batch_time=batch_time, loss=losses,
-                   top1=top1, top5=top5))
+                i, len(val_loader), batch_time=batch_time, loss=losses,
+                top1=top1, top5=top5))
 
     print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
           .format(top1=top1, top5=top5))
 
     return top1.avg
+
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
@@ -296,10 +298,9 @@ def accuracy(output, target, topk=(1,)):
 
     res = []
     for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
+        correct_k = correct[:k].reshape(-1).float().sum(0)  # Fixed: Replaced view() with reshape()
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
-
 
 if __name__ == '__main__':
     main()
