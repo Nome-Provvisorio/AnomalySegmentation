@@ -85,58 +85,43 @@ def train(args, model, enc=False):
     best_acc = 0
 
     #TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
-    #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
-
     weight = torch.ones(NUM_CLASSES)
-    if (enc):
-        weight[0] = 2.3653597831726	
-        weight[1] = 4.4237880706787	
-        weight[2] = 2.9691488742828	
-        weight[3] = 5.3442072868347	
-        weight[4] = 5.2983593940735	
-        weight[5] = 5.2275490760803	
-        weight[6] = 5.4394111633301	
-        weight[7] = 5.3659925460815	
-        weight[8] = 3.4170460700989	
-        weight[9] = 5.2414722442627	
-        weight[10] = 4.7376127243042	
-        weight[11] = 5.2286224365234	
-        weight[12] = 5.455126285553	
-        weight[13] = 4.3019247055054	
-        weight[14] = 5.4264230728149	
-        weight[15] = 5.4331531524658	
-        weight[16] = 5.433765411377	
-        weight[17] = 5.4631009101868	
-        weight[18] = 5.3947434425354
+    if enc:
+        weight[:19] = torch.tensor([
+            2.3653597831726, 4.4237880706787, 2.9691488742828, 5.3442072868347,
+            5.2983593940735, 5.2275490760803, 5.4394111633301, 5.3659925460815,
+            3.4170460700989, 5.2414722442627, 4.7376127243042, 5.2286224365234,
+            5.455126285553, 4.3019247055054, 5.4264230728149, 5.4331531524658,
+            5.433765411377, 5.4631009101868, 5.3947434425354
+        ])
     else:
-        weight[0] = 2.8149201869965	
-        weight[1] = 6.9850029945374	
-        weight[2] = 3.7890393733978	
-        weight[3] = 9.9428062438965	
-        weight[4] = 9.7702074050903	
-        weight[5] = 9.5110931396484	
-        weight[6] = 10.311357498169	
-        weight[7] = 10.026463508606	
-        weight[8] = 4.6323022842407	
-        weight[9] = 9.5608062744141	
-        weight[10] = 7.8698215484619	
-        weight[11] = 9.5168733596802	
-        weight[12] = 10.373730659485	
-        weight[13] = 6.6616044044495	
-        weight[14] = 10.260489463806	
-        weight[15] = 10.287888526917	
-        weight[16] = 10.289801597595	
-        weight[17] = 10.405355453491	
-        weight[18] = 10.138095855713	
-
+        weight[:19] = torch.tensor([
+            2.8149201869965, 6.9850029945374, 3.7890393733978, 9.9428062438965,
+            9.7702074050903, 9.5110931396484, 10.311357498169, 10.026463508606,
+            4.6323022842407, 9.5608062744141, 7.8698215484619, 9.5168733596802,
+            10.373730659485, 6.6616044044495, 10.260489463806, 10.287888526917,
+            10.289801597595, 10.405355453491, 10.138095855713
+        ])
+    
     weight[19] = 0
 
     assert os.path.exists(args.datadir), "Error: datadir (dataset directory) could not be loaded"
 
-    co_transform = MyCoTransform(enc, augment=True, height=args.height)#1024)
-    co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
-    dataset_train = cityscapes(args.datadir, co_transform, 'train')
-    dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
+    co_transform = MyCoTransform(enc, augment=True, height=args.height)
+    co_transform_val = MyCoTransform(enc, augment=False, height=args.height)
+
+    # Itera attraverso tutte le sottocartelle della directory principale
+    subdirs = [os.path.join(args.datadir, subdir) for subdir in os.listdir(args.datadir) if os.path.isdir(os.path.join(args.datadir, subdir))]
+
+    datasets_train = []
+    datasets_val = []
+    for subdir in subdirs:
+        datasets_train.append(cityscapes(subdir, co_transform, 'train'))
+        datasets_val.append(cityscapes(subdir, co_transform_val, 'val'))
+
+    # Combina tutti i dataset
+    dataset_train = torch.utils.data.ConcatDataset(datasets_train)
+    dataset_val = torch.utils.data.ConcatDataset(datasets_val)
 
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
@@ -144,33 +129,27 @@ def train(args, model, enc=False):
     if args.cuda:
         weight = weight.cuda()
     criterion = CrossEntropyLoss2d(weight)
-    print(type(criterion))
-
+    
     savedir = f'../save/{args.savedir}'
 
-    if (enc):
+    if enc:
         automated_log_path = savedir + "/automated_log_encoder.txt"
         modeltxtpath = savedir + "/model_encoder.txt"
     else:
         automated_log_path = savedir + "/automated_log.txt"
         modeltxtpath = savedir + "/model.txt"    
 
-    if (not os.path.exists(automated_log_path)):    #dont add first line if it exists 
+    if not os.path.exists(automated_log_path):
         with open(automated_log_path, "a") as myfile:
             myfile.write("Epoch\t\tTrain-loss\t\tTest-loss\t\tTrain-IoU\t\tTest-IoU\t\tlearningRate")
 
     with open(modeltxtpath, "w") as myfile:
         myfile.write(str(model))
 
-
-    #TODO: reduce memory in first gpu: https://discuss.pytorch.org/t/multi-gpu-training-memory-usage-in-balance/4163/4        #https://github.com/pytorch/pytorch/issues/1893
-
-    #optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=2e-4)     ## scheduler 1
-    optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4)      ## scheduler 2
+    optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999), eps=1e-08, weight_decay=1e-4)
 
     start_epoch = 1
     if args.resume:
-        #Must load weights, optimizer, epoch and best value. 
         if enc:
             filenameCheckpoint = savedir + '/checkpoint_enc.pth.tar'
         else:
@@ -184,9 +163,9 @@ def train(args, model, enc=False):
         best_acc = checkpoint['best_acc']
         print("=> Loaded checkpoint at epoch {})".format(checkpoint['epoch']))
 
-    #scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5) # set up scheduler     ## scheduler 1
-    lambda1 = lambda epoch: pow((1-((epoch-1)/args.num_epochs)),0.9)  ## scheduler 2
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)                             ## scheduler 2
+    lambda1 = lambda epoch: pow((1-((epoch-1)/args.num_epochs)),0.9)
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)
+                ## scheduler 2
 
     if args.visualize and args.steps_plot > 0:
         board = Dashboard(args.port)
