@@ -138,6 +138,9 @@ def train(args, model, enc=False):
     dataset_train = cityscapes(args.datadir, co_transform, 'train/aachen')
     dataset_val = cityscapes(args.datadir, co_transform_val, 'val/frankfurt')
 
+    print("dataset train: ", dataset_train)
+    print("dataset val: ", dataset_val)
+    
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
