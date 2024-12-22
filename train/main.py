@@ -27,6 +27,13 @@ import importlib
 from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
+import torch_xla.core.xla_model as xm
+
+# Impostazione del dispositivo per la TPU
+device = xm.xla_device()
+
+##IMPOSTAZIONI PER TPU 
+
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 20 #pascal=22, cityscapes=20
@@ -225,7 +232,9 @@ def train(args, model, enc=False):
             targets = Variable(labels)
             outputs = model(inputs, only_encode=enc)
 
-
+            model.to(device)
+            inputs.to(device)
+            targets.to(device)
 
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
