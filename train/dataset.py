@@ -1,3 +1,5 @@
+import glob
+
 import numpy as np
 import os
 
@@ -59,37 +61,68 @@ class VOC12(Dataset):
 
 
 
+
 class cityscapes(Dataset):
-
     def __init__(self, root, co_transform=None, subset='train'):
-        self.images_root = os.path.join(root, '')
-        self.labels_root = os.path.join(root, '')
-        
-        self.images_root += subset
-        self.labels_root += subset
+        self.images_root = os.path.join(root, subset)
+        self.labels_root = os.path.join(root, 'gtFine', subset)
 
-        # Debug dei percorsi
         print(f"Images path: {self.images_root}")
         print(f"Labels path: {self.labels_root}")
-        #self.filenames = [image_basename(f) for f in os.listdir(self.images_root) if is_image(f)]
-        self.filenames = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.images_root)) for f in fn if is_image(f)]
-        self.filenames.sort()
 
-        #[os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(".")) for f in fn]
-        #self.filenamesGt = [image_basename(f) for f in os.listdir(self.labels_root) if is_image(f)]
-        self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.labels_root)) for f in fn if is_label(f)]
+        self.filenames = [os.path.join(dp, f) for dp, dn, fn in os.walk(self.images_root) for f in fn if is_image(f)]
+        self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(self.labels_root) for f in fn if is_label(f)]
+
+        self.filenames.sort()
         self.filenamesGt.sort()
 
-        self.co_transform = co_transform # ADDED THIS
+        print(f"Number of image files: {len(self.filenames)}")
+        print(f"Number of label files: {len(self.filenamesGt)}")
 
+        print("Sample image filenames:")
+        for f in self.filenames[:5]:
+            print(f)
+        print("Sample label filenames:")
+        for f in self.filenamesGt[:5]:
+            print(f)
+
+        # Filtra per trovare coppie valide
+        valid_filenames = []
+        valid_filenamesGt = []
+
+        for f in self.filenames:
+            base_name = os.path.basename(f).replace("_leftImg8bit.png", "")
+            for gt in self.filenamesGt:
+                gt_base_name = os.path.basename(gt).replace("_gtFine_labelTrainIds.png", "")
+                if base_name == gt_base_name:
+                    valid_filenames.append(f)
+                    valid_filenamesGt.append(gt)
+                    break
+
+        self.filenames = valid_filenames
+        self.filenamesGt = valid_filenamesGt
+
+        print(f"Number of valid image-label pairs: {len(self.filenames)}")
+        if len(self.filenames) != len(self.filenamesGt):
+            print("Warning: Mismatch in number of images and labels after filtering!")
+
+        print("Verifica corrispondenza nomi file:")
+        for f, gt in zip(self.filenames, self.filenamesGt):
+            print(f"Immagine: {os.path.basename(f)}")
+            print(f"Label: {os.path.basename(gt)}")
+
+        self.co_transform = co_transform
 
     def __getitem__(self, index):
+        if index >= len(self.filenames) or index >= len(self.filenamesGt):
+            raise IndexError(f"Index {index} out of range. Check dataset alignment.")
+
         filename = self.filenames[index]
         filenameGt = self.filenamesGt[index]
 
-        with open(image_path_city(self.images_root, filename), 'rb') as f:
+        with open(filename, 'rb') as f:
             image = load_image(f).convert('RGB')
-        with open(image_path_city(self.labels_root, filenameGt), 'rb') as f:
+        with open(filenameGt, 'rb') as f:
             label = load_image(f).convert('P')
 
         if self.co_transform is not None:
@@ -99,4 +132,3 @@ class cityscapes(Dataset):
 
     def __len__(self):
         return len(self.filenames)
-

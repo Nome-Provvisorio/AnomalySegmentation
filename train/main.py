@@ -137,7 +137,6 @@ def train(args, model, enc=False):
     co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
     dataset_train = cityscapes(args.datadir, co_transform, 'train')
     dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
-
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
@@ -495,7 +494,9 @@ if __name__ == '__main__':
     parser.add_argument('--state')
 
     parser.add_argument('--port', type=int, default=8097)
-    parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
+    import os
+    home_dir = os.getenv("HOME") or os.getenv("USERPROFILE")
+    parser.add_argument('--datadir', default=(home_dir + "/datasets/cityscapes/") if home_dir else "./datasets/cityscapes/")
     parser.add_argument('--height', type=int, default=512)
     parser.add_argument('--num-epochs', type=int, default=150)
     parser.add_argument('--num-workers', type=int, default=4)
