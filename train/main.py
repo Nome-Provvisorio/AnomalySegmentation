@@ -223,7 +223,8 @@ def train(args, model, enc=False):
 
             inputs = Variable(images)
             targets = Variable(labels)
-            outputs = model(inputs.to(device), only_encode=enc)
+            outputs = model(inputs, only_encode=enc)
+
 
 
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
