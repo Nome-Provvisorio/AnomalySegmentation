@@ -98,7 +98,7 @@ def main(args):
     if(not os.path.exists(args.datadir)):
         print ("Error: datadir could not be loaded")
 
-
+    print("sto evalutando")
     loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset),
         num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
@@ -109,6 +109,7 @@ def main(args):
         vis = visdom.Visdom()
 
     for step, (images, labels, filename, filenameGt) in enumerate(loader):
+        print("sono entrato nel for")
         if (not args.cpu):
             images = images.cuda()
             #labels = labels.cuda()
