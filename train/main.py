@@ -27,7 +27,7 @@ import importlib
 from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
-
+import torch.nn as nn
 # Impostazione del dispositivo per la TPU
 #import torch_xla.core.xla_model as xm
 #device = xm.xla_device()
