@@ -30,10 +30,10 @@ from shutil import copyfile
 import torch_xla.core.xla_model as xm
 
 # Impostazione del dispositivo per la TPU
-device = xm.xla_device()
+#device = xm.xla_device()
 
 #Impostazione per due GPU 
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ##IMPOSTAZIONI PER TPU 
 
