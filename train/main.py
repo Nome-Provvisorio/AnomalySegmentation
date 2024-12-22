@@ -32,6 +32,9 @@ import torch_xla.core.xla_model as xm
 # Impostazione del dispositivo per la TPU
 device = xm.xla_device()
 
+#Impostazione per due GPU 
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 ##IMPOSTAZIONI PER TPU 
 
 
@@ -230,11 +233,12 @@ def train(args, model, enc=False):
 
             inputs = Variable(images)
             targets = Variable(labels)
-            outputs = model(inputs, only_encode=enc)
-
+            
             model.to(device)
             inputs.to(device)
             targets.to(device)
+            
+            outputs = model(inputs, only_encode=enc)
 
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
