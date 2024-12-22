@@ -94,6 +94,11 @@ class CrossEntropyLoss2d(torch.nn.Module):
 def train(args, model, enc=False):
     best_acc = 0
 
+    # 3. Se hai più di una GPU, puoi utilizzare DataParallel
+    if torch.cuda.device_count() > 1:
+        print("Using", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(model)
+    
     #TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
     #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
 
