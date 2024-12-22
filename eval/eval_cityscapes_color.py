@@ -109,7 +109,6 @@ def main(args):
         vis = visdom.Visdom()
 
     for step, (images, labels, filename, filenameGt) in enumerate(loader):
-        print("sono entrato nel for")
         if (not args.cpu):
             images = images.cuda()
             #labels = labels.cuda()
