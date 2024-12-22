@@ -27,6 +27,16 @@ import importlib
 from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
+import torch.nn as nn
+# Impostazione del dispositivo per la TPU
+#import torch_xla.core.xla_model as xm
+#device = xm.xla_device()
+
+#Impostazione per due GPU 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+##IMPOSTAZIONI PER TPU 
+
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 20 #pascal=22, cityscapes=20
@@ -84,6 +94,11 @@ class CrossEntropyLoss2d(torch.nn.Module):
 def train(args, model, enc=False):
     best_acc = 0
 
+    # 3. Se hai più di una GPU, puoi utilizzare DataParallel
+    if torch.cuda.device_count() > 1:
+        print("Using", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(model)
+    
     #TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
     #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
 
@@ -223,6 +238,11 @@ def train(args, model, enc=False):
 
             inputs = Variable(images)
             targets = Variable(labels)
+            
+            model.to(device)
+            inputs.to(device)
+            targets.to(device)
+            
             outputs = model(inputs, only_encode=enc)
 
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))

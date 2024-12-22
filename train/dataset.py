@@ -106,11 +106,6 @@ class cityscapes(Dataset):
         if len(self.filenames) != len(self.filenamesGt):
             print("Warning: Mismatch in number of images and labels after filtering!")
 
-        print("Verifica corrispondenza nomi file:")
-        for f, gt in zip(self.filenames, self.filenamesGt):
-            print(f"Immagine: {os.path.basename(f)}")
-            print(f"Label: {os.path.basename(gt)}")
-
         self.co_transform = co_transform
 
     def __getitem__(self, index):
