@@ -400,7 +400,6 @@ def main(args):
     #Load Model
     print("model path is: ", args.model)
     print("Current working directory:", os.getcwd())
-    print("Looking for model file at:", os.path.abspath(args.model + ".py"))
     assert os.path.exists(args.model + ".py"), "Error: model definition not found"
     model_file = importlib.import_module(args.model)
     model = model_file.Net(NUM_CLASSES)
@@ -482,7 +481,6 @@ def main(args):
         #When loading encoder reinitialize weights for decoder because they are set to 0 when training dec
     
     print("Training dataset path:", args.datadir)
-    print("Files in training directory:", os.listdir(os.path.join(args.datadir, "train")))
 
     model = train(args, model, False)   #Train decoder
     print("========== TRAINING FINISHED ===========")
