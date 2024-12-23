@@ -89,7 +89,7 @@ def main():
         
         print("prima dell'if: ", pathGT)
         
-        if "RoadObsticle21" in pathGT:
+        if "road-obstacles" in pathGT:
            pathGT = pathGT.replace("webp", "png")
         if "fs_static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
