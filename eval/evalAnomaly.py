@@ -93,7 +93,7 @@ def main():
            pathGT = pathGT.replace("webp", "png")
         if "fs_static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
-        if "RoadAnomaly" in pathGT:
+        if "road-anomaly" in pathGT:
             pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color"
             pathGT = pathGT.replace("jpg", "png")  
 
