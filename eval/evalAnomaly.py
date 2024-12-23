@@ -86,7 +86,6 @@ def main():
             result = model(images)
         anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)            
         pathGT = path.replace("images", "labels_masks") 
-        pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color.png"
         
         print("prima dell'if: ", pathGT)
         
@@ -95,7 +94,8 @@ def main():
         if "fs_static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
         if "RoadAnomaly" in pathGT:
-           pathGT = pathGT.replace("jpg", "png")  
+            pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color"
+            pathGT = pathGT.replace("jpg", "png")  
 
         print("dopo l'if: ", pathGT)
         
