@@ -117,10 +117,10 @@ def main():
         else:
              ood_gts_list.append(ood_gts)
              anomaly_score_list.append(anomaly_result)
-        del result, anomaly_result, ood_gts, mask
-        torch.cuda.empty_cache()
         print(f"Anomaly score list length: {len(anomaly_score_list)}")
         print(f"OOD ground-truth list length: {len(ood_gts_list)}")
+        del result, anomaly_result, ood_gts, mask
+        torch.cuda.empty_cache()
 
     
     file.write( "\n")
