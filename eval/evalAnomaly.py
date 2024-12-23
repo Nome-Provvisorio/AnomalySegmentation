@@ -101,8 +101,6 @@ def main():
         
         mask = Image.open(pathGT)
         ood_gts = np.array(mask)
-        print("mask: ", mask)
-        print("ood_gts: ", ood_gts)
 
         if "road-anomaly" in pathGT:
             ood_gts = np.where((ood_gts==2), 1, ood_gts)
