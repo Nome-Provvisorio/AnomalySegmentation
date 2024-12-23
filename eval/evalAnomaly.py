@@ -94,8 +94,8 @@ def main():
         if "fs_static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
         if "road-anomaly" in pathGT:
-            #pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color"
-            pathGT = pathGT.replace("jpg", "png")  
+            pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color.png"
+            #pathGT = pathGT.replace("jpg", "png")  
 
         print("dopo l'if: ", pathGT)
         
