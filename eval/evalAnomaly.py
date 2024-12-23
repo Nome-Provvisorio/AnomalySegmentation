@@ -90,7 +90,7 @@ def main():
         print("prima dell'if: ", pathGT)
         
         if "road-obstacles" in pathGT:
-           pathGT = pathGT.replace("webp", "png")
+           pathGT = pathGT.replace(".webp", "_labels_semantic_color.png")
         if "fs_static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
         if "road-anomaly" in pathGT:
