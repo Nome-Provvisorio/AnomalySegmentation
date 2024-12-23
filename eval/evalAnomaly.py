@@ -79,7 +79,7 @@ def main():
     model.eval()
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
-        print(path)
+        print("stampo il path: ", path)
         images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
         images = images.permute(0,3,1,2)
         with torch.no_grad():
@@ -102,7 +102,11 @@ def main():
             ood_gts = np.where((ood_gts==0), 255, ood_gts)
             ood_gts = np.where((ood_gts==1), 0, ood_gts)
             ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)
-
+        if "road-obstacles" in pathGT:
+            # Esegui la trasformazione delle maschere per il tuo dataset
+            ood_gts = np.where((ood_gts == 2), 1, ood_gts)  # Sostituisci <valore_ood> con il valore specifico del tuo dataset
+            ood_gts = np.where((ood_gts != 1), 0, ood_gts)
+            print("sono entrato")
         if "Streethazard" in pathGT:
             ood_gts = np.where((ood_gts==14), 255, ood_gts)
             ood_gts = np.where((ood_gts<20), 0, ood_gts)
