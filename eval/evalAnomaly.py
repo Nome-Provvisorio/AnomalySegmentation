@@ -85,7 +85,11 @@ def main():
         with torch.no_grad():
             result = model(images)
         anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)            
-        pathGT = path.replace("images", "labels_masks")                
+        pathGT = path.replace("images", "labels_masks") 
+        pathGT = osp.splitext(pathGT)[0] + ".png"
+        
+        print("prima dell'if: ", pathGT)
+        
         if "RoadObsticle21" in pathGT:
            pathGT = pathGT.replace("webp", "png")
         if "fs_static" in pathGT:
@@ -93,6 +97,8 @@ def main():
         if "RoadAnomaly" in pathGT:
            pathGT = pathGT.replace("jpg", "png")  
 
+        print("dopo l'if: ", pathGT)
+        
         mask = Image.open(pathGT)
         ood_gts = np.array(mask)
 
