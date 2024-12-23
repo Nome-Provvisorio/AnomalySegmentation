@@ -112,11 +112,15 @@ def main():
             ood_gts = np.where((ood_gts<20), 0, ood_gts)
             ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
+        print(f"Valori unici nella maschera: {np.unique(ood_gts)}")
+
         if 1 not in np.unique(ood_gts):
-            continue              
+                print(f"No OOD pixels found for {pathGT}, skipping image.")
+                continue            
         else:
-             ood_gts_list.append(ood_gts)
-             anomaly_score_list.append(anomaly_result)
+            print("appending result")
+            ood_gts_list.append(ood_gts)
+            anomaly_score_list.append(anomaly_result)
         print(f"Anomaly score list length: {len(anomaly_score_list)}")
         print(f"OOD ground-truth list length: {len(ood_gts_list)}")
         del result, anomaly_result, ood_gts, mask
