@@ -104,7 +104,7 @@ def main():
             ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)
         if "road-obstacles" in pathGT:
             # Esegui la trasformazione delle maschere per il tuo dataset
-            ood_gts = np.where((ood_gts == 2), 1, ood_gts)  # Sostituisci <valore_ood> con il valore specifico del tuo dataset
+            ood_gts = np.where((ood_gts == 1), 1, ood_gts)  # Sostituisci <valore_ood> con il valore specifico del tuo dataset
             ood_gts = np.where((ood_gts != 1), 0, ood_gts)
             print("sono entrato")
         if "Streethazard" in pathGT:
