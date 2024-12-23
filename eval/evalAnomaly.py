@@ -94,7 +94,7 @@ def main():
         if "fs_static" in pathGT:
            pathGT = pathGT.replace("jpg", "png")                
         if "road-anomaly" in pathGT:
-            pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color"
+            #pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color"
             pathGT = pathGT.replace("jpg", "png")  
 
         print("dopo l'if: ", pathGT)
@@ -102,7 +102,7 @@ def main():
         mask = Image.open(pathGT)
         ood_gts = np.array(mask)
 
-        if "RoadAnomaly" in pathGT:
+        if "road-anomaly" in pathGT:
             ood_gts = np.where((ood_gts==2), 1, ood_gts)
         if "LostAndFound" in pathGT:
             ood_gts = np.where((ood_gts==0), 255, ood_gts)
