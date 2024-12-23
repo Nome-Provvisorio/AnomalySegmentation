@@ -115,7 +115,10 @@ def main():
              anomaly_score_list.append(anomaly_result)
         del result, anomaly_result, ood_gts, mask
         torch.cuda.empty_cache()
+        print(f"Anomaly score list length: {len(anomaly_score_list)}")
+        print(f"OOD ground-truth list length: {len(ood_gts_list)}")
 
+    
     file.write( "\n")
 
     ood_gts = np.array(ood_gts_list)
