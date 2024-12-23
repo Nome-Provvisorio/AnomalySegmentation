@@ -86,7 +86,7 @@ def main():
             result = model(images)
         anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)            
         pathGT = path.replace("images", "labels_masks") 
-        pathGT = osp.splitext(pathGT)[0] + "labels_semantic_color.png"
+        pathGT = osp.splitext(pathGT)[0] + "_labels_semantic_color.png"
         
         print("prima dell'if: ", pathGT)
         
