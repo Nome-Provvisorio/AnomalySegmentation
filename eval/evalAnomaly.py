@@ -25,7 +25,6 @@ NUM_CLASSES = 20
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 
-
 def main():
     parser = ArgumentParser()
     parser.add_argument(
@@ -82,12 +81,11 @@ def main():
     from pathlib import Path
     base_path = Path("C:/Users/vcata/Downloads/dataset_ObstacleTrack/images")
     files = list(base_path.glob("*.webp"))
-    # print(f"File trovati con pathlib: {[str(file) for file in files]}")
-    counter=0
+    counter = 0
     for path in files:
-        counter+=1
-        if counter>2:
-            break
+        # counter += 1
+        # if counter > 2:
+        #     break
         path = Path(path)  # Converte il percorso in un oggetto Path
         print(f"Elaborazione immagine: {path}")  # Log percorso immagine
 
@@ -98,43 +96,27 @@ def main():
             result = model(images)
 
         anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
-        print("Parent: ",path.parent.parent)
-        # Usa pathlib per manipolare il percorso della maschera
+        print("Parent: ", path.parent.parent)
+
+        # Usa pathlib per manipolare il percorso della maschera originale
         pathGT = path.parent.parent / "labels_masks" / path.stem
         pathGT = pathGT.with_name(pathGT.stem + "_labels_semantic.png")
         print(f"Percorso iniziale della maschera: {pathGT}")  # Verifica percorso iniziale della maschera
 
-        # # Gestione percorsi specifici
-        # if "dataset_ObstacleTrack" in str(pathGT):
-        #     pathGT = path.parent / "labels_masks" / (path.stem.replace(".webp", "_labels_semantic_color.png"))
-        # if "fs_static" in str(pathGT):
-        #     pathGT = pathGT.with_suffix(".png")
-        # if "road-anomaly" in str(pathGT):
-        #     pathGT = pathGT.with_name(pathGT.stem + "_labels_semantic_color.png")
-
-        print(f"Percorso finale della maschera: {pathGT}")  # Verifica percorso finale della maschera
+        # Aggiungi gestione per immagine con ostacolo
+        pathColor = path.parent / (path.stem + "_color" + path.suffix)
+        print(f"Percorso immagine con ostacolo: {pathColor}")
 
         try:
-            mask = Image.open(pathGT)  # Carica la maschera
+            mask = Image.open(pathGT)  # Carica la maschera originale
             ood_gts = np.array(mask)
             print(f"Valori iniziali nella maschera: {np.unique(ood_gts)}")  # Valori iniziali della maschera
 
-            # Modifiche per dataset specifici
-            if "road-anomaly" in str(pathGT):
-                ood_gts = np.where((ood_gts == 2), 1, ood_gts)
-            if "LostAndFound" in str(pathGT):
-                ood_gts = np.where((ood_gts == 0), 255, ood_gts)
-                ood_gts = np.where((ood_gts == 1), 0, ood_gts)
-                ood_gts = np.where((ood_gts > 1) & (ood_gts < 201), 1, ood_gts)
-            if "Streethazard" in str(pathGT):
-                ood_gts = np.where((ood_gts == 14), 255, ood_gts)
-                ood_gts = np.where((ood_gts < 20), 0, ood_gts)
-                ood_gts = np.where((ood_gts == 255), 1, ood_gts)
             if "dataset_ObstacleTrack" in str(pathGT):
                 ood_gts = np.where((ood_gts == 2), 1, ood_gts)
 
             print(f"Valori dopo trasformazione: {np.unique(ood_gts)}")
-            print(ood_gts.shape)# Valori trasformati della maschera
+            print(ood_gts.shape)  # Valori trasformati della maschera
 
             if 1 not in np.unique(ood_gts):
                 print(f"Nessun pixel OOD trovato per {pathGT}, salto immagine.")  # Log in caso di maschera senza OOD
@@ -143,13 +125,26 @@ def main():
                 ood_gts_list.append(ood_gts)
                 print("Append")
                 anomaly_score_list.append(anomaly_result)
+
+            # Verifica immagine con ostacolo e aggiungi logica se necessario
+            if pathColor.exists():
+                print(f"Trovata immagine con ostacolo: {pathColor}")
+                images_color = torch.from_numpy(np.array(Image.open(pathColor).convert('RGB'))).unsqueeze(0).float()
+                images_color = images_color.permute(0, 3, 1, 2)
+
+                with torch.no_grad():
+                    result_color = model(images_color)
+
+                anomaly_result_color = 1.0 - np.max(result_color.squeeze(0).data.cpu().numpy(), axis=0)
+                anomaly_score_list.append(anomaly_result_color)
+                print("Aggiunto risultato immagine con ostacolo.")
+
         except Exception as e:
             print(f"Errore nell'elaborazione di {pathGT}: {e}")  # Log in caso di errore
             continue
 
     del result, anomaly_result, ood_gts, mask
     torch.cuda.empty_cache()
-
 
     file.write("\n")
 
