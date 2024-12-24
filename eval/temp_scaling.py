@@ -1,17 +1,16 @@
+import argparse
 import torch
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Resize, ToTensor
 from temperature_scaling import ModelWithTemperature
 from erfnet import ERFNet
-from dataset import cityscapes  # Assicurati che il modulo sia disponibile
+from dataset import cityscapes
 from transform import Relabel, ToLabel
-
 from PIL import Image
-
 
 # Configurazioni globali
 NUM_CLASSES = 20
-IMAGE_SIZE = (512, 512)  # Dimensione dell'immagine dopo il resize
+IMAGE_SIZE = (512, 512)  # Dimensione immagine dopo il resize
 
 # Trasformazioni per il dataset
 input_transform_cityscapes = Compose([
@@ -70,18 +69,33 @@ def apply_temperature_scaling(model, valid_loader):
     return scaled_model
 
 
+def main(args):
+    # Carica il modello
+    model = load_model(args.model_path, args.weights_path, NUM_CLASSES, args.cuda)
+
+    # Crea il DataLoader per il set di validazione
+    valid_dataset = cityscapes(args.data_dir, input_transform_cityscapes, target_transform_cityscapes, subset='val')
+    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    # Applica il Temperature Scaling
+    scaled_model = apply_temperature_scaling(model, valid_loader)
+
+    # Salva il modello scalato
+    torch.save(scaled_model.state_dict(), args.output_path)
+    print(f"Modello scalato salvato con successo in: {args.output_path}")
+
+
 if __name__ == '__main__':
-    parser = ArgumentParser()
+    parser = argparse.ArgumentParser(description="Temperature Scaling for ERFNet with Cityscapes Dataset")
 
-    parser.add_argument('--loadDir', default="/kaggle/input/pretrained_model_erfnet/pytorch/default/")
-    parser.add_argument('--loadWeights', default="1model_best.pth.tar")
-    parser.add_argument('--loadModel', default="erfnet.py")
-    parser.add_argument('--subset', default="val")
-    parser.add_argument('--datadir', default="/kaggle/input/cityscapes-correctlabels/Cityscape")
-    parser.add_argument('--num-workers', type=int, default=4)
-    parser.add_argument('--batch-size', type=int, default=8)
-    parser.add_argument('--cpu', action='store_true')
-    parser.add_argument('--input_transform', default=None)  # Adatta le trasformazioni
-    parser.add_argument('--target_transform', default=None)
+    # Aggiungi argomenti configurabili
+    parser.add_argument('--model_path', type=str, required=True, help='Path al file del modello (es. erfnet.py)')
+    parser.add_argument('--weights_path', type=str, required=True, help='Path ai pesi del modello (.pth file)')
+    parser.add_argument('--data_dir', type=str, required=True, help='Directory del dataset Cityscapes')
+    parser.add_argument('--output_path', type=str, default='scaled_model.pth', help='Path per salvare il modello scalato')
+    parser.add_argument('--batch_size', type=int, default=8, help='Dimensione del batch per il DataLoader')
+    parser.add_argument('--num_workers', type=int, default=4, help='Numero di worker per il DataLoader')
+    parser.add_argument('--cuda', action='store_true', help='Usa CUDA se disponibile')
 
-    main(parser.parse_args())
+    args = parser.parse_args()
+    main(args)
