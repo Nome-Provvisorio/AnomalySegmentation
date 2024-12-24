@@ -1,3 +1,5 @@
 Temperature 0.5: MEAN IoU = 59.05%
 Temperature 0.75: MEAN IoU = 59.05%
 Temperature 1.1: MEAN IoU = 59.05%
+Temperature 0.5: MEAN IoU = 0.06%
+Temperature 0.75: MEAN IoU = 1.59%

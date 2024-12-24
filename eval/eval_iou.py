@@ -1,4 +1,8 @@
-# Import necessary libraries
+# Code to calculate IoU (mean and per-class) in a dataset
+# Nov 2017
+# Eduardo Romera
+#######################
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -22,7 +26,8 @@ from iouEval import iouEval, getColorEntry
 NUM_CHANNELS = 3
 NUM_CLASSES = 20
 
-temperatures = [0.5, 0.75, 1.1]  # Added temperatures
+def apply_temperature_scaling(logits, temperature):
+    return logits / temperature
 
 image_transform = ToPILImage()
 input_transform_cityscapes = Compose([
@@ -32,7 +37,7 @@ input_transform_cityscapes = Compose([
 target_transform_cityscapes = Compose([
     Resize(512, Image.NEAREST),
     ToLabel(),
-    Relabel(255, 19),   # Ignore label to 19
+    Relabel(255, 19),   #ignore label to 19
 ])
 
 def main(args):
@@ -45,10 +50,11 @@ def main(args):
 
     model = ERFNet(NUM_CLASSES)
 
-    if not args.cpu:
+    #model = torch.nn.DataParallel(model)
+    if (not args.cpu):
         model = torch.nn.DataParallel(model).cuda()
 
-    def load_my_state_dict(model, state_dict):  # Custom function to load model when not all dict elements
+    def load_my_state_dict(model, state_dict):  #custom function to load model when not all dict elements
         own_state = model.state_dict()
         for name, param in state_dict.items():
             if name not in own_state:
@@ -66,82 +72,80 @@ def main(args):
 
     model.eval()
 
-    if not os.path.exists(args.datadir):
+    if(not os.path.exists(args.datadir)):
         print("Error: datadir could not be loaded")
 
-    loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset),
-                        num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
+    loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset), num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
+
+    iouEvalVal = iouEval(NUM_CLASSES)
 
     start = time.time()
 
-    with open("temperatures.txt", "a") as file:
-        for temp in temperatures:
-            print(f"\nEvaluating with temperature: {temp}")
-            iouEvalVal = iouEval(NUM_CLASSES)  # Create a new IoU evaluator for each temperature
+    temperature = 1.1  # Temperature scaling factor
 
-            for step, (images, labels, filename, filenameGt) in enumerate(loader):
-                if not args.cpu:
-                    images = images.cuda()
-                    labels = labels.cuda()
+    for step, (images, labels, filename, filenameGt) in enumerate(loader):
+        if (not args.cpu):
+            images = images.cuda()
+            labels = labels.cuda()
 
-                inputs = Variable(images)
+        inputs = Variable(images)
+        with torch.no_grad():
+            outputs = model(inputs)
+            outputs = apply_temperature_scaling(outputs, temperature)
 
-                with torch.no_grad():
-                    outputs = model(inputs)
-                    outputs = F.softmax(outputs / temp, dim=1)  # Apply temperature scaling
-                    iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
+        iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
 
-                    filenameSave = f"{filename[0].split('leftImg8bit/')[1]}_temp{temp:.2f}"  # Save filename with temperature
-                    # print(step, filenameSave)
+        filenameSave = filename[0].split("leftImg8bit/")[1]
 
-            iouVal, iou_classes = iouEvalVal.getIoU()
+        print(step, filenameSave)
 
-            iou_classes_str = []
-            for i in range(iou_classes.size(0)):
-                iouStr = getColorEntry(iou_classes[i]) + '{:0.2f}'.format(iou_classes[i] * 100) + '\033[0m'
-                iou_classes_str.append(iouStr)
+    iouVal, iou_classes = iouEvalVal.getIoU()
 
-            print("---------------------------------------")
-            print(f"Results for temperature {temp}:")
-            print("Per-Class IoU:")
-            print(iou_classes_str[0], "Road")
-            print(iou_classes_str[1], "sidewalk")
-            print(iou_classes_str[2], "building")
-            print(iou_classes_str[3], "wall")
-            print(iou_classes_str[4], "fence")
-            print(iou_classes_str[5], "pole")
-            print(iou_classes_str[6], "traffic light")
-            print(iou_classes_str[7], "traffic sign")
-            print(iou_classes_str[8], "vegetation")
-            print(iou_classes_str[9], "terrain")
-            print(iou_classes_str[10], "sky")
-            print(iou_classes_str[11], "person")
-            print(iou_classes_str[12], "rider")
-            print(iou_classes_str[13], "car")
-            print(iou_classes_str[14], "truck")
-            print(iou_classes_str[15], "bus")
-            print(iou_classes_str[16], "train")
-            print(iou_classes_str[17], "motorcycle")
-            print(iou_classes_str[18], "bicycle")
-            print("=======================================")
-            iouStr = getColorEntry(iouVal) + '{:0.2f}'.format(iouVal * 100) + '\033[0m'
-            print(f"MEAN IoU for temperature {temp}: ", iouStr, "%")
-
-            # Save MEAN IoU to file
-            file.write(f"Temperature {temp}: MEAN IoU = {iouVal * 100:.2f}%\n")
+    iou_classes_str = []
+    for i in range(iou_classes.size(0)):
+        iouStr = getColorEntry(iou_classes[i])+'{:0.2f}'.format(iou_classes[i]*100) + '\033[0m'
+        iou_classes_str.append(iouStr)
 
     print("---------------------------------------")
-    print("Took ", time.time() - start, "seconds")
+    print("Took ", time.time()-start, "seconds")
+    print("=======================================")
+    print("Per-Class IoU:")
+    print(iou_classes_str[0], "Road")
+    print(iou_classes_str[1], "sidewalk")
+    print(iou_classes_str[2], "building")
+    print(iou_classes_str[3], "wall")
+    print(iou_classes_str[4], "fence")
+    print(iou_classes_str[5], "pole")
+    print(iou_classes_str[6], "traffic light")
+    print(iou_classes_str[7], "traffic sign")
+    print(iou_classes_str[8], "vegetation")
+    print(iou_classes_str[9], "terrain")
+    print(iou_classes_str[10], "sky")
+    print(iou_classes_str[11], "person")
+    print(iou_classes_str[12], "rider")
+    print(iou_classes_str[13], "car")
+    print(iou_classes_str[14], "truck")
+    print(iou_classes_str[15], "bus")
+    print(iou_classes_str[16], "train")
+    print(iou_classes_str[17], "motorcycle")
+    print(iou_classes_str[18], "bicycle")
+    print("=======================================")
+    iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
+    print("MEAN IoU: ", iouStr, "%")
+
+    # Save mean IoU to file
+    with open("temperature.txt", "a") as file:
+        file.write(f"Temperature: {temperature}, Mean IoU: {iouVal*100:.2f}%\n")
 
 if __name__ == '__main__':
     parser = ArgumentParser()
 
     parser.add_argument('--state')
 
-    parser.add_argument('--loadDir', default="../trained_models/")
+    parser.add_argument('--loadDir',default="../trained_models/")
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
     parser.add_argument('--loadModel', default="erfnet.py")
-    parser.add_argument('--subset', default="val")  # Can be val or train (must have labels)
+    parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
     parser.add_argument('--datadir', default="/home/shyam/ViT-Adapter/segmentation/data/cityscapes/")
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
