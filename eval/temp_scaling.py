@@ -7,6 +7,9 @@ from torchvision.transforms import Compose, Resize, ToTensor
 from dataset import cityscapes
 from erfnet import ERFNet
 from temperature_scaling import ModelWithTemperature
+from transform import Relabel, ToLabel
+from PIL import Image
+
 
 NUM_CLASSES = 20
 IMAGE_SIZE = (512, 512)  # Dimensione dell'immagine dopo il resize
