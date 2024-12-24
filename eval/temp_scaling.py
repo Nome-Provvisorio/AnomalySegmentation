@@ -70,29 +70,18 @@ def apply_temperature_scaling(model, valid_loader):
     return scaled_model
 
 
-def main():
-    # Configurazioni principali
-    model_path = "/kaggle/input/pretrained_model_erfnet/pytorch/default/erfnet.py"
-    weights_path = "/kaggle/input/pretrained_model_erfnet/pytorch/default/1model_best.pth.tar"
-    data_dir = "/kaggle/input/cityscapes-correctlabels/Cityscape"
-    batch_size = 8
-    num_workers = 4
-    use_cuda = torch.cuda.is_available()
-
-    # Carica il modello
-    model = load_model(model_path, weights_path, NUM_CLASSES, use_cuda)
-
-    # Crea il DataLoader per il set di validazione
-    valid_dataset = cityscapes(data_dir, input_transform_cityscapes, target_transform_cityscapes, subset='val')
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-
-    # Applica il Temperature Scaling
-    scaled_model = apply_temperature_scaling(model, valid_loader)
-
-    # Salva il modello scalato
-    torch.save(scaled_model.state_dict(), '/kaggle/working/scaled_model.pth')
-    print("Modello scalato salvato con successo!")
-
-
 if __name__ == '__main__':
-    main()
+    parser = ArgumentParser()
+
+    parser.add_argument('--loadDir', default="/kaggle/input/pretrained_model_erfnet/pytorch/default/")
+    parser.add_argument('--loadWeights', default="1model_best.pth.tar")
+    parser.add_argument('--loadModel', default="erfnet.py")
+    parser.add_argument('--subset', default="val")
+    parser.add_argument('--datadir', default="/kaggle/input/cityscapes-correctlabels/Cityscape")
+    parser.add_argument('--num-workers', type=int, default=4)
+    parser.add_argument('--batch-size', type=int, default=8)
+    parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--input_transform', default=None)  # Adatta le trasformazioni
+    parser.add_argument('--target_transform', default=None)
+
+    main(parser.parse_args())
