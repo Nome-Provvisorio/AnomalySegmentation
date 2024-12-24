@@ -3,7 +3,7 @@ import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from argparse import ArgumentParser
-
+from torchvision.transforms import Compose, Resize, ToTensor
 from dataset import cityscapes
 from erfnet import ERFNet
 from temperature_scaling import ModelWithTemperature
