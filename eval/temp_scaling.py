@@ -66,7 +66,8 @@ def main(args):
 
     # Applica il Temperature Scaling
     print("Applying Temperature Scaling...")
-    scaled_model = ModelWithTemperature(model)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    scaled_model = ModelWithTemperature(model, device=device)
     scaled_model.set_temperature(loader)
 
     print(f"Optimal temperature: {scaled_model.temperature.item()}")
