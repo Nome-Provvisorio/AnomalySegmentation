@@ -1,25 +1,40 @@
-import numpy as np
 import torch
-from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from argparse import ArgumentParser
-
-from dataset import cityscapes
-from erfnet import ERFNet
+from torchvision.transforms import Compose, Resize, ToTensor
 from temperature_scaling import ModelWithTemperature
+from erfnet import ERFNet
+from dataset import cityscapes  # Assicurati che il modulo sia disponibile
+from transform import Relabel, ToLabel
 
+from PIL import Image
+
+
+# Configurazioni globali
 NUM_CLASSES = 20
+IMAGE_SIZE = (512, 512)  # Dimensione dell'immagine dopo il resize
 
-def main(args):
-    modelpath = args.loadDir + args.loadModel
-    weightspath = args.loadDir + args.loadWeights
+# Trasformazioni per il dataset
+input_transform_cityscapes = Compose([
+    Resize(IMAGE_SIZE, Image.BILINEAR),
+    ToTensor(),
+])
 
-    print("Loading model:", modelpath)
-    print("Loading weights:", weightspath)
+target_transform_cityscapes = Compose([
+    Resize(IMAGE_SIZE, Image.NEAREST),
+    ToLabel(),
+    Relabel(255, 19),  # Ignora etichetta 255 e sostituiscila con 19
+])
 
-    model = ERFNet(NUM_CLASSES)
 
-    # Carica i pesi
+def load_model(model_path, weights_path, num_classes, use_cuda=True):
+    """
+    Carica il modello ERFNet con i pesi salvati.
+    """
+    print(f"Caricamento del modello da: {model_path}")
+    print(f"Caricamento dei pesi da: {weights_path}")
+
+    model = ERFNet(num_classes)
+
     def load_my_state_dict(model, state_dict):
         own_state = model.state_dict()
         for name, param in state_dict.items():
@@ -33,45 +48,51 @@ def main(args):
                 own_state[name].copy_(param)
         return model
 
-    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
-    print("Model and weights LOADED successfully")
+    state_dict = torch.load(weights_path, map_location='cpu')
+    model = load_my_state_dict(model, state_dict)
 
-    if not args.cpu:
+    if use_cuda:
         model = model.cuda()
 
     model.eval()
+    print("Modello caricato con successo!")
+    return model
 
-    # Carica il dataset di validazione
-    loader = DataLoader(
-        cityscapes(args.datadir, args.input_transform, args.target_transform, subset=args.subset),
-        num_workers=args.num_workers,
-        batch_size=args.batch_size,
-        shuffle=False,
-    )
 
-    # Applica il Temperature Scaling
+def apply_temperature_scaling(model, valid_loader):
+    """
+    Applica il Temperature Scaling al modello.
+    """
     print("Applying Temperature Scaling...")
     scaled_model = ModelWithTemperature(model)
-    scaled_model.set_temperature(loader)
+    scaled_model.set_temperature(valid_loader)
+    print(f"Temperatura ottimale: {scaled_model.temperature.item()}")
+    return scaled_model
 
-    print(f"Optimal temperature: {scaled_model.temperature.item()}")
+
+def main():
+    # Configurazioni principali
+    model_path = "/kaggle/input/pretrained_model_erfnet/pytorch/default/erfnet.py"
+    weights_path = "/kaggle/input/pretrained_model_erfnet/pytorch/default/1model_best.pth.tar"
+    data_dir = "/kaggle/input/cityscapes-correctlabels/Cityscape"
+    batch_size = 8
+    num_workers = 4
+    use_cuda = torch.cuda.is_available()
+
+    # Carica il modello
+    model = load_model(model_path, weights_path, NUM_CLASSES, use_cuda)
+
+    # Crea il DataLoader per il set di validazione
+    valid_dataset = cityscapes(data_dir, input_transform_cityscapes, target_transform_cityscapes, subset='val')
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+    # Applica il Temperature Scaling
+    scaled_model = apply_temperature_scaling(model, valid_loader)
 
     # Salva il modello scalato
     torch.save(scaled_model.state_dict(), '/kaggle/working/scaled_model.pth')
-    print("Scaled model saved successfully.")
+    print("Modello scalato salvato con successo!")
+
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-
-    parser.add_argument('--loadDir', default="/kaggle/input/pretrained_model_erfnet/pytorch/default/")
-    parser.add_argument('--loadWeights', default="1model_best.pth.tar")
-    parser.add_argument('--loadModel', default="erfnet.py")
-    parser.add_argument('--subset', default="val")
-    parser.add_argument('--datadir', default="/kaggle/input/cityscapes-correctlabels/Cityscape")
-    parser.add_argument('--num-workers', type=int, default=4)
-    parser.add_argument('--batch-size', type=int, default=8)
-    parser.add_argument('--cpu', action='store_true')
-    parser.add_argument('--input_transform', default=None)  # Adatta le trasformazioni
-    parser.add_argument('--target_transform', default=None)
-
-    main(parser.parse_args())
+    main()
