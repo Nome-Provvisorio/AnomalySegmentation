@@ -54,7 +54,7 @@ def main(args):
     model.eval()
 
     # Carica il dataset di validazione
-   loader = DataLoader(
+    loader = DataLoader(
         cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset),
         num_workers=args.num_workers,
         batch_size=args.batch_size,
