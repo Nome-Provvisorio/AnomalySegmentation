@@ -91,6 +91,22 @@ class MaxLogitLoss(torch.nn.Module):
         loss = max_logits - target_logits
         return loss.mean()
 
+class MaxEntropyLoss(nn.Module):
+    def __init__(self, temperature=1.0):
+        super(MaxEntropyLoss, self).__init__()
+        self.temperature = temperature
+    
+    def forward(self, outputs, targets):
+        # Calcolo delle probabilità
+        logits = outputs / self.temperature
+        probs = F.softmax(logits, dim=1)
+        
+        # Calcolo dell'entropia
+        log_probs = F.log_softmax(logits, dim=1)
+        entropy_loss = -torch.mean(torch.sum(probs * log_probs, dim=1))  # Entropia di Shannon
+        
+        return entropy_loss
+
 
 def train(args, model, enc=False):
     best_acc = 0
@@ -159,6 +175,8 @@ def train(args, model, enc=False):
     
     #criterion = CrossEntropyLoss2d(weight)
     criterion = MaxLogitLoss()
+    #criterion = MaxEntropyLoss()
+    
     print(type(criterion))
 
     savedir = f'../save/{args.savedir}'
