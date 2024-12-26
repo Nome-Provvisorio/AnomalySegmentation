@@ -80,7 +80,7 @@ class CrossEntropyLoss2d(torch.nn.Module):
         return self.loss(outputs, targets)
 
 
-class MaxLogitLoss(nn.Module):
+class MaxLogitLoss(torch.nn.Module):
     def __init__(self):
         super(MaxLogitLoss, self).__init__()
 
