@@ -80,6 +80,33 @@ class CrossEntropyLoss2d(torch.nn.Module):
         return self.loss(outputs, targets)
 
 
+class MaxLogitLoss(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, outputs, targets):
+        # Compute the max logit for each pixel and subtract the target class logit
+        max_logits, _ = outputs.max(dim=1)
+        target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
+        loss = max_logits - target_logits
+        return loss.mean()
+
+class MaxEntropyLoss(torch.nn.Module):
+    def __init__(self, temperature=1.0):
+        super(MaxEntropyLoss, self).__init__()
+        self.temperature = temperature
+    
+    def forward(self, outputs, targets):
+        # Calcolo delle probabilità
+        logits = outputs / self.temperature
+        probs = F.softmax(logits, dim=1)
+        
+        # Calcolo dell'entropia
+        log_probs = F.log_softmax(logits, dim=1)
+        entropy_loss = -torch.mean(torch.sum(probs * log_probs, dim=1))  # Entropia di Shannon
+        
+        return entropy_loss
+
 
 def train(args, model, enc=False):
     best_acc = 0
@@ -137,12 +164,19 @@ def train(args, model, enc=False):
     co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
     dataset_train = cityscapes(args.datadir, co_transform, 'train')
     dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
+
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
     if args.cuda:
         weight = weight.cuda()
-    criterion = CrossEntropyLoss2d(weight)
+        
+    ### CHANGE THE LOSS FUNCTION HERE 
+    
+    #criterion = CrossEntropyLoss2d(weight)
+    #criterion = MaxLogitLoss()
+    criterion = MaxEntropyLoss()
+    
     print(type(criterion))
 
     savedir = f'../save/{args.savedir}'
@@ -482,8 +516,7 @@ def main(args):
         #When loading encoder reinitialize weights for decoder because they are set to 0 when training dec
     
     print("Training dataset path:", args.datadir)
-    print("Files in training directory:", os.listdir(os.path.join(args.datadir, "train")))
-
+    
     model = train(args, model, False)   #Train decoder
     print("========== TRAINING FINISHED ===========")
 
@@ -494,9 +527,7 @@ if __name__ == '__main__':
     parser.add_argument('--state')
 
     parser.add_argument('--port', type=int, default=8097)
-    import os
-    home_dir = os.getenv("HOME") or os.getenv("USERPROFILE")
-    parser.add_argument('--datadir', default=(home_dir + "/datasets/cityscapes/") if home_dir else "./datasets/cityscapes/")
+    parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
     parser.add_argument('--height', type=int, default=512)
     parser.add_argument('--num-epochs', type=int, default=150)
     parser.add_argument('--num-workers', type=int, default=4)
