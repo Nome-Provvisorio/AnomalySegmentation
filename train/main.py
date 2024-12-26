@@ -82,12 +82,14 @@ class CrossEntropyLoss2d(torch.nn.Module):
 
 class MaxLogitLoss(torch.nn.Module):
     def __init__(self):
-        super(MaxLogitLoss, self).__init__()
+        super().__init__()
 
-    def forward(self, logits, targets):
-        # Gather logits for the target class
-        target_logits = logits.gather(1, targets.unsqueeze(1)).squeeze(1)
-        return -target_logits.mean()
+    def forward(self, outputs, targets):
+        # Compute the max logit for each pixel and subtract the target class logit
+        max_logits, _ = outputs.max(dim=1)
+        target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
+        loss = max_logits - target_logits
+        return loss.mean()
 
 
 def train(args, model, enc=False):
