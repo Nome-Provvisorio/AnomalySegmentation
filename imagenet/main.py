@@ -61,9 +61,11 @@ parser.add_argument('--pretrained', dest='pretrained', action='store_true',
 best_prec1 = 0
 
 def max_logit_loss(outputs, targets):
+    max_logits, _ = outputs.max(dim=1)
     target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
-    # Calcolo della loss
-    return -target_logits.mean()
+    loss = (max_logits - target_logits).clamp(min=-1e5, max=1e5)  # Clipping
+    return loss.mean()
+
 
 
 def main():
