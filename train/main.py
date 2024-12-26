@@ -27,16 +27,6 @@ import importlib
 from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
-import torch.nn as nn
-# Impostazione del dispositivo per la TPU
-#import torch_xla.core.xla_model as xm
-#device = xm.xla_device()
-
-#Impostazione per due GPU 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-##IMPOSTAZIONI PER TPU 
-
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 20 #pascal=22, cityscapes=20
@@ -90,15 +80,19 @@ class CrossEntropyLoss2d(torch.nn.Module):
         return self.loss(outputs, targets)
 
 
+class MaxLogitLoss(nn.Module):
+    def __init__(self):
+        super(MaxLogitLoss, self).__init__()
+
+    def forward(self, logits, targets):
+        # Gather logits for the target class
+        target_logits = logits.gather(1, targets.unsqueeze(1)).squeeze(1)
+        return -target_logits.mean()
+
 
 def train(args, model, enc=False):
     best_acc = 0
 
-    # 3. Se hai più di una GPU, puoi utilizzare DataParallel
-    if torch.cuda.device_count() > 1:
-        print("Using", torch.cuda.device_count(), "GPUs!")
-        model = nn.DataParallel(model)
-    
     #TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
     #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
 
@@ -152,12 +146,17 @@ def train(args, model, enc=False):
     co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
     dataset_train = cityscapes(args.datadir, co_transform, 'train')
     dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
+
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
     if args.cuda:
         weight = weight.cuda()
-    criterion = CrossEntropyLoss2d(weight)
+        
+    ### CHANGE THE LOSS FUNCTION HERE 
+    
+    #criterion = CrossEntropyLoss2d(weight)
+    criterion = MaxLogitLoss()
     print(type(criterion))
 
     savedir = f'../save/{args.savedir}'
@@ -238,11 +237,6 @@ def train(args, model, enc=False):
 
             inputs = Variable(images)
             targets = Variable(labels)
-            
-            model.to(device)
-            inputs.to(device)
-            targets.to(device)
-            
             outputs = model(inputs, only_encode=enc)
 
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
@@ -420,6 +414,7 @@ def main(args):
     #Load Model
     print("model path is: ", args.model)
     print("Current working directory:", os.getcwd())
+    print("Looking for model file at:", os.path.abspath(args.model + ".py"))
     assert os.path.exists(args.model + ".py"), "Error: model definition not found"
     model_file = importlib.import_module(args.model)
     model = model_file.Net(NUM_CLASSES)
@@ -501,7 +496,7 @@ def main(args):
         #When loading encoder reinitialize weights for decoder because they are set to 0 when training dec
     
     print("Training dataset path:", args.datadir)
-
+    
     model = train(args, model, False)   #Train decoder
     print("========== TRAINING FINISHED ===========")
 
@@ -512,9 +507,7 @@ if __name__ == '__main__':
     parser.add_argument('--state')
 
     parser.add_argument('--port', type=int, default=8097)
-    import os
-    home_dir = os.getenv("HOME") or os.getenv("USERPROFILE")
-    parser.add_argument('--datadir', default=(home_dir + "/datasets/cityscapes/") if home_dir else "./datasets/cityscapes/")
+    parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
     parser.add_argument('--height', type=int, default=512)
     parser.add_argument('--num-epochs', type=int, default=150)
     parser.add_argument('--num-workers', type=int, default=4)
