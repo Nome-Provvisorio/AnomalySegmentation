@@ -60,6 +60,12 @@ parser.add_argument('--pretrained', dest='pretrained', action='store_true',
 
 best_prec1 = 0
 
+def max_logit_loss(outputs, targets):
+    target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
+    # Calcolo della loss
+    return -target_logits.mean()
+
+
 def main():
     global args, best_prec1
     args = parser.parse_args()
@@ -78,8 +84,11 @@ def main():
     model = torch.nn.DataParallel(model).cuda()
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
+    #criterion = nn.CrossEntropyLoss().cuda()
+    
+    criterion = lambda outputs, targets: max_logit_loss(outputs, targets)
 
+    
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
