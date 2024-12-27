@@ -64,7 +64,7 @@ class VOC12(Dataset):
 
 class cityscapes(Dataset):
     def __init__(self, root, co_transform=None, subset='train'):
-        self.images_root = os.path.join(root, subset)
+        self.images_root = os.path.join(root,'leftImg8bit', subset)
         self.labels_root = os.path.join(root, 'gtFine', subset)
 
         print(f"Images path: {self.images_root}")
@@ -105,11 +105,6 @@ class cityscapes(Dataset):
         print(f"Number of valid image-label pairs: {len(self.filenames)}")
         if len(self.filenames) != len(self.filenamesGt):
             print("Warning: Mismatch in number of images and labels after filtering!")
-
-        print("Verifica corrispondenza nomi file:")
-        for f, gt in zip(self.filenames, self.filenamesGt):
-            print(f"Immagine: {os.path.basename(f)}")
-            print(f"Label: {os.path.basename(gt)}")
 
         self.co_transform = co_transform
 
