@@ -81,11 +81,7 @@ def main():
     from pathlib import Path
     base_path = Path("C:/Users/vcata/Downloads/dataset_ObstacleTrack/images")
     files = list(base_path.glob("*.webp"))
-    counter = 0
     for path in files:
-        counter += 1
-        if counter > 2:
-            break
         path = Path(path)  # Converte il percorso in un oggetto Path
         print(f"Processing image: {path}")  # Log percorso immagine
 
