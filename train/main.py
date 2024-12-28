@@ -91,8 +91,7 @@ class MaxLogitLoss(torch.nn.Module):
         loss = max_logits - target_logits
         return loss.mean()
 
-class MaxEntropyLoss(torch.nn.Module):
-    def __init__(self, temperature=1.0):
+
 class MaxEntropyLoss(torch.nn.Module):
     def __init__(self, temperature=1.0):
         super(MaxEntropyLoss, self).__init__()
