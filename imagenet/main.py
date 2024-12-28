@@ -61,12 +61,13 @@ parser.add_argument('--pretrained', dest='pretrained', action='store_true',
 best_prec1 = 0
 
 def max_logit_loss(outputs, targets):
-    # Calcolo dei logit massimi e dei logit target
+    # Calcolo dei logit massimi e target
     max_logits, _ = outputs.max(dim=1)
     target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
 
-    # Stabilità numerica: log softmax sulla differenza
-    loss = torch.log1p((max_logits - target_logits).exp())
+    # Stabilità numerica: limitiamo i logit con softmax logaritmico
+    log_diff = (max_logits - target_logits).clamp(min=-50, max=50)  # Evita overflow/underflow
+    loss = log_diff.exp() - 1  # Funzione smooth per evitare esplosioni
 
     # Media su tutto il batch
     return loss.mean()
