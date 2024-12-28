@@ -61,6 +61,9 @@ parser.add_argument('--pretrained', dest='pretrained', action='store_true',
 best_prec1 = 0
 
 def max_logit_loss(outputs, targets):
+    # Normalizzazione dei logit
+    outputs = outputs / torch.norm(outputs, dim=1, keepdim=True)
+
     # Calcolo dei logit massimi e target
     max_logits, _ = outputs.max(dim=1)
     target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
@@ -71,6 +74,7 @@ def max_logit_loss(outputs, targets):
 
     # Media su tutto il batch
     return loss.mean()
+
 
 
 
