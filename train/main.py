@@ -22,7 +22,7 @@ from torchvision.transforms import ToTensor, ToPILImage
 from dataset import VOC12,cityscapes
 from transform import Relabel, ToLabel, Colorize
 from visualize import Dashboard
-
+from openloss import MaximalEntropyLoss
 import importlib
 from iouEval import iouEval, getColorEntry
 
@@ -226,7 +226,7 @@ def train(args, model, enc=False):
     
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
-    criterion = MaxEntropyLoss(num_classes=NUM_CLASSES, weight=weight, reduction='mean')
+    criterion = MaximalEntropyLoss(num_classes=NUM_CLASSES, weight=weight, reduction='mean')
     #criterion = NLLLoss2d(weight)
     
     print(type(criterion))
