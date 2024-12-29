@@ -114,27 +114,22 @@ class CombinedLoss(torch.nn.Module):
         return self.alpha * ce_loss + (1 - self.alpha) * ml_loss
 
 
-class MaxEntropyLoss(torch.nn.Module):
-    def __init__(self, temperature=1.0):
-        super(MaxEntropyLoss, self).__init__()
-        self.temperature = temperature
+class MaxEntropyLoss(nn.Module):
+    def __init__(self, weight=None):
+        super().__init__()
+        self.weight = weight
 
     def forward(self, outputs, targets):
-        # Normalizzazione dei logits con il parametro di temperatura
-        logits = outputs / self.temperature
+        # Calcolo dell'entropia incrociata standard
+        log_probs = F.log_softmax(outputs, dim=1)
+        entropy_loss = F.cross_entropy(outputs, targets, weight=self.weight)
 
-        # Calcolo delle probabilità previste
-        probs = torch.nn.functional.softmax(logits, dim=1)
+        
+        # Applicazione dei pesi se forniti
+        if self.weight is not None:
+            entropy_loss = entropy_loss * self.weight
 
-        # Calcolo della probabilità media e della massima entropia
-        mean_probs = torch.mean(probs, dim=0)
-        max_entropy = torch.log(torch.tensor(probs.size(1), dtype=torch.float32))
-
-        # Calcolo della loss come differenza tra massima entropia e entropia osservata
-        log_probs = torch.log(mean_probs + 1e-8)  # Per evitare log(0)
-        entropy_loss = max_entropy - torch.sum(mean_probs * log_probs)
-
-        return entropy_loss
+        return entropy_loss.mean()
 
 
 
