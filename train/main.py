@@ -18,6 +18,8 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, CenterCrop, Normalize, Resize, Pad
 from torchvision.transforms import ToTensor, ToPILImage
+import torch.nn as nn
+import torch.nn.functional as F
 
 from dataset import VOC12,cityscapes
 from transform import Relabel, ToLabel, Colorize
@@ -89,17 +91,21 @@ class BCEWithLogitsLoss(torch.nn.Module):
         return self.loss(outputs, targets)
 
 
-class MaxLogitLoss(torch.nn.Module):
-    def __init__(self, margin=1.0):
+
+class MaxLogitLoss(nn.Module):
+    def __init__(self, weight=None):
         super().__init__()
-        self.margin = margin
+        self.weight = weight
 
     def forward(self, outputs, targets):
-        max_logits, _ = outputs.max(dim=1)
-        target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
-        # Encourage target logit to be larger than max logit by a margin
-        loss = torch.nn.functional.relu(max_logits - target_logits + self.margin)
-        return loss.mean()
+        # Calcolo della logit (usiamo direttamente gli outputs grezzi)
+        logits = outputs
+
+        # Calcolo della Cross-Entropy Loss utilizzando i logit
+        log_probs = F.log_softmax(logits, dim=1)
+        max_logit_loss = F.nll_loss(log_probs, targets, weight=self.weight)
+
+        return max_logit_loss.mean()
 
 class CombinedLoss(torch.nn.Module):
     def __init__(self, alpha=0.5, margin=1.0, weight=None):
@@ -200,10 +206,10 @@ def train(args, model, enc=False):
     ### CHANGE THE LOSS FUNCTION HERE 
     
     # criterion = CrossEntropyLoss2d(weight)
-    # criterion = MaxLogitLoss()
-    #criterion = MaxEntropyLoss()
+    criterion = MaxLogitLoss()
+    # criterion = MaxEntropyLoss()
     # criterion = BCEWithLogitsLoss(weight)
-    criterion = CombinedLoss(weight=weight)
+    #criterion = CombinedLoss(weight=weight)
 
     print(type(criterion))
 
@@ -290,7 +296,10 @@ def train(args, model, enc=False):
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
             optimizer.zero_grad()
+            
             loss = criterion(outputs, targets[:, 0])
+
+            
             loss.backward()
             optimizer.step()
 
