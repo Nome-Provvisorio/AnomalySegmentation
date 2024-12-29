@@ -198,7 +198,7 @@ def train(args, model, enc=False):
     
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
-    criterion = MaxEntropyLoss(weight=weight)
+    criterion = MaximalEntropyLoss(num_classes=19, margin=0.35, reduction='mean')
     #criterion = NLLLoss2d(weight)
     
     print(type(criterion))
@@ -289,8 +289,8 @@ def train(args, model, enc=False):
 
             optimizer.zero_grad()
             
-            #loss = criterion(outputs, targets[:, 0])
-            loss = criterion(outputs)
+            loss = criterion(outputs, targets[:, 0])
+            #loss = criterion(outputs)
 
             loss.backward()
             optimizer.step()
@@ -356,8 +356,8 @@ def train(args, model, enc=False):
 
             outputs = model(inputs, only_encode=enc) 
 
-            #loss = criterion(outputs, targets[:, 0])
-            loss = criterion(outputs)
+            loss = criterion(outputs, targets[:, 0])
+            #loss = criterion(outputs)
 
             
             epoch_loss_val.append(loss.item())
