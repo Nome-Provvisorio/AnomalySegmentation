@@ -80,6 +80,15 @@ class CrossEntropyLoss2d(torch.nn.Module):
         return self.loss(outputs, targets)
 
 
+class BCEWithLogitsLoss(torch.nn.Module):
+    def __init__(self, weight=None):
+        super().__init__()
+        self.loss = torch.nn.BCEWithLogitsLoss(weight)
+
+    def forward(self, outputs, targets):
+        return self.loss(outputs, targets)
+
+
 class MaxLogitLoss(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -185,6 +194,7 @@ def train(args, model, enc=False):
     criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss()
+    # criterion = BCEWithLogitsLoss(weight)
     
     print(type(criterion))
 
