@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, CenterCrop, Normalize, Resize, Pad
 from torchvision.transforms import ToTensor, ToPILImage
 import torch.nn as nn
+import torch.nn.functional as F
 
 from dataset import VOC12,cityscapes
 from transform import Relabel, ToLabel, Colorize
@@ -100,31 +101,21 @@ class MaxLogitLoss(torch.nn.Module):
         loss = max_logits - target_logits
         return loss.mean()
 
-import torch
-import torch.nn as nn
-
 class MaxEntropyLoss(nn.Module):
     def __init__(self, weight=None):
-        super(MaxEntropyLoss, self).__init__()
+        super().__init__()
         self.weight = weight
 
-    def forward(self, outputs):
-        # Applichiamo softmax per ottenere probabilità
-        probs = torch.nn.functional.softmax(outputs, dim=1)
+    def forward(self, outputs, targets):
+        # Calcolo dell'entropia incrociata standard
+        log_probs = F.log_softmax(outputs, dim=1)
+        entropy_loss = F.cross_entropy(outputs, targets, weight=self.weight)
+
         
-        # Calcoliamo l'entropia massima come -sum(p * log(p))
-        log_probs = torch.log(probs)
-        entropy_loss = -torch.sum(probs * log_probs, dim=1)
-
-        # Se sono forniti i pesi, li applichiamo
+        # Applicazione dei pesi se forniti
         if self.weight is not None:
-            # Assicurati che i pesi siano un tensor di dimensioni (num_classi,)
-            # Nel caso in cui siano per 64 classi
-            weight = self.weight.unsqueeze(0).unsqueeze(2)  # (1, num_classi, 1)
-            weight = weight.expand(outputs.size(0), -1, -1)  # Espandiamo per il batch_size e le classi
-            entropy_loss = entropy_loss * weight
+            entropy_loss = entropy_loss * self.weight
 
-        # Media della loss
         return entropy_loss.mean()
 
 
@@ -196,9 +187,9 @@ def train(args, model, enc=False):
         
     ### CHANGE THE LOSS FUNCTION HERE 
     
-    criterion = CrossEntropyLoss2d(weight)
+    #criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
-    #criterion = MaximalEntropyLoss(num_classes=19, margin=0.35, reduction='mean')
+    criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
     
     print(type(criterion))
