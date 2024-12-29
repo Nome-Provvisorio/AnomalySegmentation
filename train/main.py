@@ -193,8 +193,6 @@ def train(args, model, enc=False):
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
     # criterion = MaxEntropyLoss()
-
-    outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
     criterion = NLLLoss2d(weight)
     
     print(type(criterion))
@@ -278,7 +276,9 @@ def train(args, model, enc=False):
             inputs = Variable(images)
             targets = Variable(labels)
             outputs = model(inputs, only_encode=enc)
-
+            
+            outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
+            
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
             optimizer.zero_grad()
