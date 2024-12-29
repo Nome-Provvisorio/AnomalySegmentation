@@ -96,13 +96,13 @@ def main():
         #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
         ## QUESTO è MAXENTROPY
-        probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
-        entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
-        anomaly_result = entropy
+        #probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
+        #entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
+        #anomaly_result = entropy
 
         #QUESTO è MAXLOGIT
         # Calcola il logit massimo per ogni pixel (prima di softmax)
-        #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         #print("Parent: ", path.parent.parent)
 
