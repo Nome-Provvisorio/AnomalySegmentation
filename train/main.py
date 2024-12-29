@@ -99,7 +99,7 @@ class MaxLogitLoss(torch.nn.Module):
         loss = max_logits - target_logits
         return loss.mean()
 
-class MaxEntropyLoss(torch.nn.Module):
+class MaxEntropyLoss(nn.Module):
     def __init__(self, weight=None):
         super(MaxEntropyLoss, self).__init__()
         self.weight = weight
@@ -114,8 +114,10 @@ class MaxEntropyLoss(torch.nn.Module):
 
         # Se sono forniti i pesi, li applichiamo
         if self.weight is not None:
-            # I pesi devono essere un tensor di dimensioni compatibili con la dimensione delle classi
-            weight = self.weight.unsqueeze(0).expand_as(entropy_loss)
+            # I pesi devono essere un tensor di dimensioni (num_classi,)
+            # Assicurati che i pesi siano del tipo e della forma corretta
+            weight = self.weight.unsqueeze(0).unsqueeze(2)  # (1, num_classi, 1)
+            weight = weight.expand_as(entropy_loss)  # Estendi il peso per corrispondere alle dimensioni di entropy_loss
             entropy_loss = entropy_loss * weight
 
         # Media della loss
