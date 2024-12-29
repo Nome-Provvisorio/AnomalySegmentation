@@ -79,11 +79,10 @@ class CrossEntropyLoss2d(torch.nn.Module):
     def forward(self, outputs, targets):
         return self.loss(outputs, targets)
 
-
-class BCEWithLogitsLoss(torch.nn.Module):
+class NLLLoss2d(torch.nn.Module):
     def __init__(self, weight=None):
         super().__init__()
-        self.loss = torch.nn.BCEWithLogitsLoss(weight)
+        self.loss = torch.nn.NLLLoss(weight)
 
     def forward(self, outputs, targets):
         return self.loss(outputs, targets)
@@ -194,7 +193,9 @@ def train(args, model, enc=False):
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
     # criterion = MaxEntropyLoss()
-    criterion = BCEWithLogitsLoss(weight)
+
+    outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
+    criterion = NLLLoss2d(weight)
     
     print(type(criterion))
 
