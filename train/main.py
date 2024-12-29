@@ -118,8 +118,8 @@ class MaxEntropyLoss(nn.Module):
 
         # Se sono forniti i pesi, li applichiamo
         if self.weight is not None:
-            # I pesi devono essere un tensor di dimensioni (num_classi,)
-            # Assicurati che i pesi siano del tipo e della forma corretta
+            # Assicurati che i pesi siano un tensor di dimensioni (num_classi,)
+            # Nel caso in cui siano per 64 classi
             weight = self.weight.unsqueeze(0).unsqueeze(2)  # (1, num_classi, 1)
             weight = weight.expand(outputs.size(0), -1, -1)  # Espandiamo per il batch_size e le classi
             entropy_loss = entropy_loss * weight
@@ -198,7 +198,7 @@ def train(args, model, enc=False):
     
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
-    criterion = MaxEntropyLoss(weight)
+    criterion = MaxEntropyLoss(weight=weight)
     #criterion = NLLLoss2d(weight)
     
     print(type(criterion))
