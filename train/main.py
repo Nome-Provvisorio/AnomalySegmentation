@@ -113,7 +113,7 @@ class MaxEntropyLoss(torch.nn.Module):
         super(MaximalEntropyLoss, self).__init__()
 
         self.margin = margin
-        self.num_classes = num_classes
+        self.num_classes = NUM_CLASSES 
         self.reduction = reduction
         self.weight = weight
 
@@ -226,7 +226,7 @@ def train(args, model, enc=False):
     
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
-    criterion = MaxEntropyLoss()
+    criterion = MaxEntropyLoss(weight=weight, reduction='mean')
     #criterion = NLLLoss2d(weight)
     
     print(type(criterion))
