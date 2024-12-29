@@ -281,7 +281,10 @@ def train(args, model, enc=False):
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
             optimizer.zero_grad()
-            loss = criterion(outputs, targets[:, 0])
+            
+            #loss = criterion(outputs, targets[:, 0])
+            loss = criterion(outputs)
+
             loss.backward()
             optimizer.step()
 
@@ -346,7 +349,10 @@ def train(args, model, enc=False):
 
             outputs = model(inputs, only_encode=enc) 
 
-            loss = criterion(outputs, targets[:, 0])
+            #loss = criterion(outputs, targets[:, 0])
+            loss = criterion(outputs)
+
+            
             epoch_loss_val.append(loss.item())
             time_val.append(time.time() - start_time)
 
