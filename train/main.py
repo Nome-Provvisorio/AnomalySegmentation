@@ -282,8 +282,8 @@ def train(args, model, enc=False):
 
             optimizer.zero_grad()
             
-            loss = criterion(outputs, targets[:, 0])
-            #loss = criterion(outputs)
+            #loss = criterion(outputs, targets[:, 0])
+            loss = criterion(outputs)
 
             loss.backward()
             optimizer.step()
@@ -349,8 +349,8 @@ def train(args, model, enc=False):
 
             outputs = model(inputs, only_encode=enc) 
 
-            loss = criterion(outputs, targets[:, 0])
-            #loss = criterion(outputs)
+            #loss = criterion(outputs, targets[:, 0])
+            loss = criterion(outputs)
 
             
             epoch_loss_val.append(loss.item())
