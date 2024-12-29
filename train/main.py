@@ -90,15 +90,17 @@ class BCEWithLogitsLoss(torch.nn.Module):
 
 
 class MaxLogitLoss(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, margin=1.0):
         super().__init__()
+        self.margin = 1.0
 
     def forward(self, outputs, targets):
-        # Compute the max logit for each pixel and subtract the target class logit
         max_logits, _ = outputs.max(dim=1)
         target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
-        loss = max_logits - target_logits
+        # Encourage target logit to be larger than max logit by a margin
+        loss = torch.nn.functional.relu(max_logits - target_logits + self.margin)
         return loss.mean()
+
 
 
 class MaxEntropyLoss(torch.nn.Module):
@@ -191,8 +193,8 @@ def train(args, model, enc=False):
         
     ### CHANGE THE LOSS FUNCTION HERE 
     
-    criterion = CrossEntropyLoss2d(weight)
-    # criterion = MaxLogitLoss()
+    # criterion = CrossEntropyLoss2d(weight)
+    criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss()
     # criterion = BCEWithLogitsLoss(weight)
     
