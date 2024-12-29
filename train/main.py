@@ -276,14 +276,14 @@ def train(args, model, enc=False):
             targets = Variable(labels)
             outputs = model(inputs, only_encode=enc)
             
-            outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
+            #outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
             
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
 
             optimizer.zero_grad()
             
-            #loss = criterion(outputs, targets[:, 0])
-            loss = criterion(outputs)
+            loss = criterion(outputs, targets[:, 0])
+            #loss = criterion(outputs)
 
             loss.backward()
             optimizer.step()
@@ -349,8 +349,8 @@ def train(args, model, enc=False):
 
             outputs = model(inputs, only_encode=enc) 
 
-            #loss = criterion(outputs, targets[:, 0])
-            loss = criterion(outputs)
+            loss = criterion(outputs, targets[:, 0])
+            #loss = criterion(outputs)
 
             
             epoch_loss_val.append(loss.item())
