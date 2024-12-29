@@ -15,3 +15,11 @@ Temperature: 1.1, Mean IoU: 0.48%
 Temperature: 1.1, Mean IoU: 2.14%
 Temperature: 1.1, Mean IoU: 59.05%
 Temperature: 1.1, Mean IoU: 72.20%
+Temperature: 1.1, Mean IoU: 0.00%
+Temperature: 1.1, Mean IoU: 72.20%
+Temperature: 1.1, Mean IoU: 72.20%
+Temperature: 0.7, Mean IoU: 72.20%
+Temperature: 0.0, Mean IoU: 27.26%
+Temperature: 10.0, Mean IoU: 72.20%
+Temperature: 700.0, Mean IoU: 72.20%
+Temperature: 700.0, Mean IoU: 72.20%
