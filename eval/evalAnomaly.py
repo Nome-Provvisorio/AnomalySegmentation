@@ -79,7 +79,7 @@ def main():
     model.eval()
 
     from pathlib import Path
-    base_path = args.input
+    base_path = Path(args.input)
     files = list(base_path.glob("*.webp"))
     for path in files:
         path = Path(path)  # Converte il percorso in un oggetto Path
