@@ -80,6 +80,15 @@ class CrossEntropyLoss2d(torch.nn.Module):
         return self.loss(outputs, targets)
 
 
+class BCEWithLogitsLoss(torch.nn.Module):
+    def __init__(self, weight=None):
+        super().__init__()
+        self.loss = torch.nn.BCEWithLogitsLoss(weight)
+
+    def forward(self, outputs, targets):
+        return self.loss(outputs, targets)
+
+
 class MaxLogitLoss(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -91,21 +100,30 @@ class MaxLogitLoss(torch.nn.Module):
         loss = max_logits - target_logits
         return loss.mean()
 
+
 class MaxEntropyLoss(torch.nn.Module):
     def __init__(self, temperature=1.0):
         super(MaxEntropyLoss, self).__init__()
         self.temperature = temperature
-    
+
     def forward(self, outputs, targets):
-        # Calcolo delle probabilità
+        # Normalizzazione dei logits con il parametro di temperatura
         logits = outputs / self.temperature
-        probs = F.softmax(logits, dim=1)
-        
-        # Calcolo dell'entropia
-        log_probs = F.log_softmax(logits, dim=1)
-        entropy_loss = -torch.mean(torch.sum(probs * log_probs, dim=1))  # Entropia di Shannon
-        
+
+        # Calcolo delle probabilità previste
+        probs = torch.nn.functional.softmax(logits, dim=1)
+
+        # Calcolo della probabilità media e della massima entropia
+        mean_probs = torch.mean(probs, dim=0)
+        max_entropy = torch.log(torch.tensor(probs.size(1), dtype=torch.float32))
+
+        # Calcolo della loss come differenza tra massima entropia e entropia osservata
+        log_probs = torch.log(mean_probs + 1e-8)  # Per evitare log(0)
+        entropy_loss = max_entropy - torch.sum(mean_probs * log_probs)
+
         return entropy_loss
+
+
 
 
 def train(args, model, enc=False):
@@ -173,9 +191,10 @@ def train(args, model, enc=False):
         
     ### CHANGE THE LOSS FUNCTION HERE 
     
-    #criterion = CrossEntropyLoss2d(weight)
-    criterion = MaxLogitLoss()
-    #criterion = MaxEntropyLoss()
+    # criterion = CrossEntropyLoss2d(weight)
+    # criterion = MaxLogitLoss()
+    # criterion = MaxEntropyLoss()
+    criterion = BCEWithLogitsLoss(weight)
     
     print(type(criterion))
 
