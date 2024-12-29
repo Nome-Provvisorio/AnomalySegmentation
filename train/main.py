@@ -191,7 +191,7 @@ def train(args, model, enc=False):
     
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
-    criterion = MaxiEntropyLoss(weight)
+    criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
     
     print(type(criterion))
