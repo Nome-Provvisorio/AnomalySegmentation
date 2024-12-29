@@ -92,7 +92,7 @@ class BCEWithLogitsLoss(torch.nn.Module):
 class MaxLogitLoss(torch.nn.Module):
     def __init__(self, margin=1.0):
         super().__init__()
-        self.margin = 1.0
+        self.margin = margin
 
     def forward(self, outputs, targets):
         max_logits, _ = outputs.max(dim=1)
@@ -101,6 +101,17 @@ class MaxLogitLoss(torch.nn.Module):
         loss = torch.nn.functional.relu(max_logits - target_logits + self.margin)
         return loss.mean()
 
+class CombinedLoss(torch.nn.Module):
+    def __init__(self, alpha=0.5, margin=1.0, weight=None):
+        super().__init__()
+        self.alpha = alpha
+        self.cross_entropy = torch.nn.CrossEntropyLoss(weight)
+        self.max_logit_loss = MaxLogitLoss(margin)
+
+    def forward(self, outputs, targets):
+        ce_loss = self.cross_entropy(outputs, targets)
+        ml_loss = self.max_logit_loss(outputs, targets)
+        return self.alpha * ce_loss + (1 - self.alpha) * ml_loss
 
 
 class MaxEntropyLoss(torch.nn.Module):
@@ -194,10 +205,11 @@ def train(args, model, enc=False):
     ### CHANGE THE LOSS FUNCTION HERE 
     
     # criterion = CrossEntropyLoss2d(weight)
-    criterion = MaxLogitLoss()
+    # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss()
     # criterion = BCEWithLogitsLoss(weight)
-    
+    criterion = CombinedLoss(weight=weight)
+
     print(type(criterion))
 
     savedir = f'../save/{args.savedir}'
