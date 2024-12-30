@@ -119,76 +119,32 @@ class MaxEntropyLoss(nn.Module):
     import torch
 
 class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
-    def __init__(self, weight=None, lambda_reg=1.0):
+    def init(self, alpha=1.0, beta=0.1, weight=None):
         """
-        Initialize the Enhanced Isotropy Maximization Loss.
-
         Args:
-            weight (torch.Tensor, optional): Class weights for the CrossEntropyLoss.
-            lambda_reg (float): Regularization coefficient to balance isotropy maximization and other loss components.
+            alpha (float): Weight for the cross-entropy loss component.
+            beta (float): Weight for the isotropy regularization term.
+            weight (torch.Tensor): Tensor of weights for class imbalance (optional).
         """
-        super().__init__()
-        self.lambda_reg = lambda_reg
-        self.weight = weight
+        super(EnhancedIsotropyMaximizationLoss, self).init()
+        self.alpha = alpha
+        self.beta = beta
+        self.weight = weight  # Class weights
 
-    def forward(self, features, targets):
-        """
-        Compute the Enhanced Isotropy Maximization Loss.
+    def forward(self, logits, targets):
+        # Cross-entropy loss with class weights
+        ce_loss = F.cross_entropy(logits, targets, weight=self.weight)
 
-        Args:
-            features (torch.Tensor): The feature representations (e.g., output of a network layer).
-            targets (torch.Tensor): The corresponding class labels.
+        # Compute the isotropy regularization term
+        logits_normalized = F.normalize(logits, dim=1)  # Normalize logits along the class dimension
+        batch_size = logits.size(0)
+        isotropy_term = torch.sum(torch.mm(logits_normalized, logits_normalized.T)**2) / (batch_size**2)
 
-        Returns:
-            torch.Tensor: The computed loss.
-        """
-        # Flatten spatial dimensions if features are 4D (e.g., [batch_size, channels, height, width])
-        if features.dim() == 4:
-            batch_size, channels, height, width = features.size()
-            features = features.permute(0, 2, 3, 1).reshape(-1, channels)
-
-        # Flatten targets if they are 3D (e.g., [batch_size, height, width])
-        if targets.dim() == 3:  # [batch_size, height, width]
-            targets = targets.view(-1)
-        
-        # Normalize features to unit vectors
-        normalized_features = F.normalize(features, p=2, dim=1)
-
-        # Split the features into smaller batches to avoid large memory usage
-        batch_size = normalized_features.size(0)
-        similarity_loss = 0
-        num_batches = (batch_size // 512) + 1  # You can adjust the batch size based on memory constraints
-
-        for i in range(num_batches):
-            start_idx = i * 512
-            end_idx = min((i + 1) * 512, batch_size)
-            batch_features = normalized_features[start_idx:end_idx]
-
-            # Compute pairwise cosine similarities for this batch
-            similarity_matrix = torch.matmul(batch_features, batch_features.t())
-
-            # Create a mask to exclude diagonal elements (self-similarity)
-            mask = ~torch.eye(similarity_matrix.size(0), dtype=torch.bool, device=similarity_matrix.device)
-            
-            # Extract off-diagonal elements
-            off_diagonal_similarities = similarity_matrix[mask]
-
-            # Isotropy loss for this batch
-            isotropy_loss = off_diagonal_similarities.pow(2).mean()
-            similarity_loss += isotropy_loss
-
-        # Average isotropy loss over all batches
-        isotropy_loss = similarity_loss / num_batches
-
-        # Classification loss (e.g., CrossEntropyLoss)
-        classification_loss = F.cross_entropy(features, targets, weight=self.weight)
-
-        # Combine losses
-        total_loss = classification_loss + self.lambda_reg * isotropy_loss
-
+        # Combine the loss components
+        total_loss = self.alpha * ce_loss - self.beta * isotropy_term
         return total_loss
 
-    
+
 
 
 
@@ -261,7 +217,7 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
-    criterion = EnhancedIsotropyMaximizationLoss(weight)
+    criterion = EnhancedIsotropyMaximizationLoss(alpha=1.0, beta=0.1, weight=weights)
     
     print(type(criterion))
 
