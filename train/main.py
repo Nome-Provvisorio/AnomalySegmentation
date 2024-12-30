@@ -26,7 +26,8 @@ from transform import Relabel, ToLabel, Colorize
 from visualize import Dashboard
 import importlib
 from iouEval import iouEval, getColorEntry
-
+from robust_deep_learning.losses import IsoMaxPlusLossFirstPart
+from robust_deep_learning.losses import IsoMaxPlusLossSecondPart
 from shutil import copyfile
 
 NUM_CHANNELS = 3
@@ -117,53 +118,22 @@ class MaxEntropyLoss(nn.Module):
         return entropy_loss.mean()
 
     import torch
+    
+class EnhancedIsotropyMaximizationLoss(nn.Module):
+    def __init__(self, alpha=1.0, weight=None):
+        super().__init__()
+        # Puoi usare IsoMaxPlusLossFirstPart per ottenere i logits o le rappresentazioni
+        self.classifier = IsoMaxPlusLossFirstPart(alpha=alpha)
+        self.weight = weight
 
-class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
-    def __init__(self, alpha=1.0):
-        """
-        Inizializza la classe di perdita EnhancedIsotropyMaximizationLoss.
+    def forward(self, outputs, targets):
+        # Calcola la loss usando IsoMaxPlusLossFirstPart
+        loss = self.classifier(outputs, targets)
         
-        Args:
-        - alpha (float): Un iperparametro che bilancia la forza dell'ottimizzazione.
-        """
-        super(EnhancedIsotropyMaximizationLoss, self).__init__()
-        self.alpha = alpha
-
-    def forward(self, embeddings, weights):
-        """
-        Calcola la perdita di massimizzazione dell'isotropia, ponderata dai pesi.
-
-        Args:
-        - embeddings (Tensor): Un tensore 2D di embedding, dove ogni riga è un vettore di embedding.
-        - weights (Tensor): Un tensore 1D di pesi per ciascun embedding. Deve essere della stessa lunghezza del batch di embeddings.
-
-        Returns:
-        - loss (Tensor): Il valore della perdita di isotropia ponderata.
-        """
-        # Verifica che le dimensioni dei pesi siano corrette
-        if weights.size(0) != embeddings.size(0):
-            raise ValueError("La dimensione dei pesi deve corrispondere al numero di embedding.")
-
-        # Normalizzare gli embedding
-        norm_embeddings = F.normalize(embeddings, p=2, dim=1)
-
-        # Calcolare il prodotto scalare tra tutte le coppie di vettori normalizzati
-        similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.t())
-
-        # Calcolare la matrice di identità
-        identity_matrix = torch.eye(similarity_matrix.size(0), device=similarity_matrix.device)
-
-        # La perdita è minimizzata quando la matrice di similarità è vicina all'identità
-        loss_matrix = (similarity_matrix - identity_matrix) ** 2
-
-        # Pondera la perdita in base ai pesi
-        weighted_loss = torch.sum(weights.unsqueeze(1) * weights.unsqueeze(0) * loss_matrix)
-
-        # Applicare l'iperparametro alpha per bilanciare la perdita
-        return self.alpha * weighted_loss
-
-
-
+        # Se desideri usare i pesi, puoi applicarli
+        if self.weight is not None:
+            loss *= self.weight
+        return loss.mean()
 
 
 def train(args, model, enc=False):
@@ -237,7 +207,7 @@ def train(args, model, enc=False):
     #criterion = NLLLoss2d(weight)
     criterion = EnhancedIsotropyMaximizationLoss(alpha=1.0, weight=weight)
     
-    print(type(criterion))
+    print("CRITERION: ", type(criterion))
 
     savedir = f'../save/{args.savedir}'
 
