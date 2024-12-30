@@ -81,7 +81,7 @@ def main():
     model.eval()
 
 
-    base_path = Path("C:/Users/vcata\Desktop\Validation_Dataset\RoadAnomaly21\images")
+    base_path = Path("C:/Users/vcata\Desktop\Validation_Dataset\RoadObsticle21\images")
     files = list(base_path.glob("*.*"))
     for path in files:
         print(f"Processing image: {path}")  # Log percorso immagine
@@ -91,24 +91,25 @@ def main():
             result = model(images)
         anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         pathGT = path.parent.parent / "labels_masks" / path.stem
-        # if "RoadObsticle21" in pathGT:
-        #     pathGT = pathGT.replace("webp", "png")
-        # if "fs_static" in pathGT:
-        #     pathGT = pathGT.replace("jpg", "png")
-        # if "RoadAnomaly" in pathGT:
-        #     pathGT = pathGT.replace("jpg", "png")
+        pathGT = pathGT.with_name(pathGT.stem + ".png")
+        if "RoadObsticle21" in str(pathGT):
+            pathGT = pathGT.with_suffix(".png")
+        if "fs_static" in str(pathGT):
+            pathGT = pathGT.with_suffix(".png")
+        if "RoadAnomaly" in str(pathGT):
+            pathGT = pathGT.with_suffix(".png")
 
         mask = Image.open(pathGT)
         ood_gts = np.array(mask)
 
-        if "RoadAnomaly" in pathGT:
+        if "RoadAnomaly" in str(pathGT):
             ood_gts = np.where((ood_gts==2), 1, ood_gts)
-        if "LostAndFound" in pathGT:
+        if "LostAndFound" in str(pathGT):
             ood_gts = np.where((ood_gts==0), 255, ood_gts)
             ood_gts = np.where((ood_gts==1), 0, ood_gts)
             ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)
 
-        if "Streethazard" in pathGT:
+        if "Streethazard" in str(pathGT):
             ood_gts = np.where((ood_gts==14), 255, ood_gts)
             ood_gts = np.where((ood_gts<20), 0, ood_gts)
             ood_gts = np.where((ood_gts==255), 1, ood_gts)
