@@ -42,6 +42,7 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument("--metric", required=True, choices=["msp", "maxentropy", "maxlogit"])
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -80,9 +81,7 @@ def main():
 
     from pathlib import Path
     base_path = Path(args.input)
-    print("base_path: ",base_path)
     files = list(base_path.glob("*.*"))
-    print("files: ", files)
     for path in files:
         print("sono dentro")
         path = Path(path)  # Converte il percorso in un oggetto Path
@@ -95,17 +94,20 @@ def main():
             result = model(images)
 
 
-        #QUESTO è MSP
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        # Seleziona la metrica basata sull'argomento
+        if args.metric == "msp":
+            # MSP
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
-        #QUESTO è MAXENTROPY
-        #probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
-        #entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
-        #anomaly_result = entropy
-
-        #QUESTO è MAXLOGIT
-        # Calcola il logit massimo per ogni pixel (prima di softmax)
-        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)/
+        elif args.metric == "maxentropy":
+            # MAXENTROPY
+            probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
+            entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Evita log(0) con epsilon
+            anomaly_result = entropy
+        
+        elif args.metric == "maxlogit":
+            # MAXLOGIT
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         #print("Parent: ", path.parent.parent)
 
