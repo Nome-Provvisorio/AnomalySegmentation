@@ -217,7 +217,7 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
-    criterion = EnhancedIsotropyMaximizationLoss(alpha=1.0, beta=0.1, weight=weights)
+    criterion = EnhancedIsotropyMaximizationLoss(alpha=1.0, beta=0.1, weight=weight)
     
     print(type(criterion))
 
