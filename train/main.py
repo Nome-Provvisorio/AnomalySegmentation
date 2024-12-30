@@ -138,6 +138,12 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
         # Compute the isotropy regularization term
         logits_normalized = F.normalize(logits, dim=1)  # Normalize logits along the class dimension
         batch_size = logits.size(0)
+        
+        # Ensure logits_normalized is 2D (batch_size, num_classes)
+        if logits_normalized.dim() > 2:
+            logits_normalized = logits_normalized.view(batch_size, -1)  # Flatten the remaining dimensions
+
+        # Compute isotropy term
         isotropy_term = torch.sum(torch.mm(logits_normalized, logits_normalized.T)**2) / (batch_size**2)
 
         # Combine the loss components
