@@ -118,6 +118,53 @@ class MaxEntropyLoss(nn.Module):
 
         return entropy_loss.mean()
 
+class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
+    def __init__(self, weight=None, lambda_reg=1.0):
+        """
+        Initialize the Enhanced Isotropy Maximization Loss.
+
+        Args:
+            weight (torch.Tensor, optional): Class weights for the CrossEntropyLoss.
+            lambda_reg (float): Regularization coefficient to balance isotropy maximization and other loss components.
+        """
+        super().__init__()
+        self.lambda_reg = lambda_reg
+        self.weight = weight
+
+    def forward(self, features, targets):
+        """
+        Compute the Enhanced Isotropy Maximization Loss.
+
+        Args:
+            features (torch.Tensor): The feature representations (e.g., output of a network layer).
+            targets (torch.Tensor): The corresponding class labels.
+
+        Returns:
+            torch.Tensor: The computed loss.
+        """
+        # Normalize features to unit vectors
+        normalized_features = F.normalize(features, p=2, dim=1)
+
+        # Compute pairwise cosine similarities
+        similarity_matrix = torch.matmul(normalized_features, normalized_features.t())
+
+        # Create a mask to exclude diagonal elements (self-similarity)
+        mask = ~torch.eye(similarity_matrix.size(0), dtype=torch.bool, device=similarity_matrix.device)
+        
+        # Extract off-diagonal elements
+        off_diagonal_similarities = similarity_matrix[mask]
+
+        # Isotropy loss: encourage uniform distribution of pairwise similarities
+        isotropy_loss = off_diagonal_similarities.pow(2).mean()
+
+        # Classification loss (e.g., CrossEntropyLoss)
+        classification_loss = F.cross_entropy(features, targets, weight=self.weight)
+
+        # Combine losses
+        total_loss = classification_loss + self.lambda_reg * isotropy_loss
+
+        return total_loss
+
 
 
 
@@ -189,8 +236,9 @@ def train(args, model, enc=False):
     
     #criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
-    criterion = MaxEntropyLoss(weight)
+    #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
+    criterion = EnhancedIsotropyMaximizationLoss(weight)
     
     print(type(criterion))
 
