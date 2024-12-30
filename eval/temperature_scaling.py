@@ -1,121 +1,185 @@
+# Copyright (c) OpenMMLab. All rights reserved.
+import os
+from pathlib import Path
+
+import cv2
+import glob
 import torch
-from torch import nn, optim
-from torch.nn import functional as F
+import random
+from PIL import Image
+import numpy as np
+from erfnet import ERFNet
+import os.path as osp
+from argparse import ArgumentParser
+from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barcode
+from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
+
+seed = 42
+
+# general reproducibility
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+
+NUM_CHANNELS = 3
+NUM_CLASSES = 20
+# gpu training specific
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = True
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument(
+        "--input",
+        default="/home/shyam/Mask2Former/unk-eval/RoadObsticle21/images/*.webp",
+        #nargs="+",
+        help="A list of space separated input images; "
+             "or a single glob pattern such as 'directory/*.jpg'",
+    )
+    parser.add_argument('--loadDir',default="../trained_models/")
+    parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
+    parser.add_argument('--loadModel', default="erfnet.py")
+    parser.add_argument('--subset', default="")  #can be val or train (must have labels)
+    parser.add_argument('--datadir', default="/home/shyam/ViT-Adapter/segmentation/data/cityscapes/")
+    parser.add_argument('--num-workers', type=int, default=4)
+    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--metric', choices=['msp', 'maxentropy', 'maxlogit', 'msp-temperature'], default='msp', help="Tipo di metrica da utilizzare.")
+    parser.add_argument('--temperature', type=float, default=1.0, help="Temperatura per la normalizzazione delle probabilità (default è 1.0).")
+    args = parser.parse_args()
+    anomaly_score_list = []
+    ood_gts_list = []
+
+    if not os.path.exists('results.txt'):
+        open('results.txt', 'w').close()
+    file = open('results.txt', 'a')
+
+    modelpath = args.loadDir + args.loadModel
+    weightspath = args.loadDir + args.loadWeights
+
+    print ("Loading model: " + modelpath)
+    print ("Loading weights: " + weightspath)
+
+    model = ERFNet(NUM_CLASSES)
+
+    if (not args.cpu):
+        model = torch.nn.DataParallel(model).cuda()
+
+    def load_my_state_dict(model, state_dict):  #custom function to load model when not all dict elements
+        own_state = model.state_dict()
+        for name, param in state_dict.items():
+            if name not in own_state:
+                if name.startswith("module."):
+                    own_state[name.split("module.")[-1]].copy_(param)
+                else:
+                    print(name, " not loaded")
+                    continue
+            else:
+                own_state[name].copy_(param)
+        return model
+
+    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
+    print ("Model and weights LOADED successfully")
+    model.eval()
 
 
-class ModelWithTemperature(nn.Module):
-    """
-    A thin decorator, which wraps a model with temperature scaling
-    model (nn.Module):
-        A classification neural network
-        NB: Output of the neural network should be the classification logits,
-            NOT the softmax (or log softmax)!
-    """
-    def __init__(self, model):
-        super(ModelWithTemperature, self).__init__()
-        self.model = model
-        self.temperature = nn.Parameter(torch.ones(1) * 1.5)
-
-    def forward(self, input):
-        logits = self.model(input)
-        return self.temperature_scale(logits)
-
-    def temperature_scale(self, logits):
-        """
-        Perform temperature scaling on logits
-        """
-        # Expand temperature to match the size of logits
-        temperature = self.temperature.unsqueeze(1).expand(logits.size(0), logits.size(1))
-        return logits / temperature
-
-    # This function probably should live outside of this class, but whatever
-    def set_temperature(self, valid_loader):
-        """
-        Tune the tempearature of the model (using the validation set).
-        We're going to set it to optimize NLL.
-        valid_loader (DataLoader): validation set loader
-        """
-        self.cuda()
-        nll_criterion = nn.CrossEntropyLoss().cuda()
-        ece_criterion = _ECELoss().cuda()
-
-        # First: collect all the logits and labels for the validation set
-        logits_list = []
-        labels_list = []
+    base_path = Path(args.input)
+    files = list(base_path.glob("*.*"))
+    for path in files:
+        print(f"Processing image: {path}")  # Log percorso immagine
+        images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
+        images = images.permute(0,3,1,2)
         with torch.no_grad():
-            for input, label in valid_loader:
-                input = input.cuda()
-                logits = self.model(input)
-                logits_list.append(logits)
-                labels_list.append(label)
-            logits = torch.cat(logits_list).cuda()
-            labels = torch.cat(labels_list).cuda()
+            result = model(images)
 
-        # Calculate NLL and ECE before temperature scaling
-        before_temperature_nll = nll_criterion(logits, labels).item()
-        before_temperature_ece = ece_criterion(logits, labels).item()
-        print('Before temperature - NLL: %.3f, ECE: %.3f' % (before_temperature_nll, before_temperature_ece))
+        
+        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
-        # Next: optimize the temperature w.r.t. NLL
-        optimizer = optim.LBFGS([self.temperature], lr=0.01, max_iter=50)
+         # Seleziona la metrica in base all'argomento
+        if args.metric == 'msp-temperature':
+            # MSP (Maximum Softmax Probability)
+            scaled_result = result / args.temperature
+            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            anomaly_result = 1.0 - np.max(probabilities, axis=0)
+        
+         elif args.metric == 'msp':
+            # MSP (Maximum Softmax Probability)
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        
+        elif args.metric == 'maxentropy':
+            # Entropia massima
+            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Evita log(0) con epsilon
+            anomaly_result = entropy
 
-        def eval():
-            optimizer.zero_grad()
-            loss = nll_criterion(self.temperature_scale(logits), labels)
-            loss.backward()
-            return loss
-        optimizer.step(eval)
+        elif args.metric == 'maxlogit':
+            # Massimo logit
+            anomaly_result = 1.0 - np.max(scaled_result.squeeze(0).data.cpu().numpy(), axis=0)
+        
+        pathGT = path.parent.parent / "labels_masks" / path.stem
+        pathGT = pathGT.with_name(pathGT.stem + ".png")
+        if "RoadObsticle21" in str(pathGT):
+            pathGT = pathGT.with_suffix(".png")
+        if "fs_static" in str(pathGT):
+            pathGT = pathGT.with_suffix(".png")
+        if "RoadAnomaly" in str(pathGT):
+            pathGT = pathGT.with_suffix(".png")
 
-        # Calculate NLL and ECE after temperature scaling
-        after_temperature_nll = nll_criterion(self.temperature_scale(logits), labels).item()
-        after_temperature_ece = ece_criterion(self.temperature_scale(logits), labels).item()
-        print('Optimal temperature: %.3f' % self.temperature.item())
-        print('After temperature - NLL: %.3f, ECE: %.3f' % (after_temperature_nll, after_temperature_ece))
+        mask = Image.open(pathGT)
+        ood_gts = np.array(mask)
 
-        return self
+        if "RoadAnomaly" in str(pathGT):
+            ood_gts = np.where((ood_gts==2), 1, ood_gts)
+        if "LostAndFound" in str(pathGT):
+            ood_gts = np.where((ood_gts==0), 255, ood_gts)
+            ood_gts = np.where((ood_gts==1), 0, ood_gts)
+            ood_gts = np.where((ood_gts>1)&(ood_gts<201), 1, ood_gts)
 
+        if "Streethazard" in str(pathGT):
+            ood_gts = np.where((ood_gts==14), 255, ood_gts)
+            ood_gts = np.where((ood_gts<20), 0, ood_gts)
+            ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
-class _ECELoss(nn.Module):
-    """
-    Calculates the Expected Calibration Error of a model.
-    (This isn't necessary for temperature scaling, just a cool metric).
+        if 1 not in np.unique(ood_gts):
+            continue
+        else:
+            ood_gts_list.append(ood_gts)
+            anomaly_score_list.append(anomaly_result)
+        del result, anomaly_result, ood_gts, mask
+        torch.cuda.empty_cache()
 
-    The input to this loss is the logits of a model, NOT the softmax scores.
+    file.write( "\n")
 
-    This divides the confidence outputs into equally-sized interval bins.
-    In each bin, we compute the confidence gap:
+    ood_gts = np.array(ood_gts_list)
+    anomaly_scores = np.array(anomaly_score_list)
+    if len(ood_gts) == 0 or len(anomaly_scores) == 0:
+        print("No valid anomaly data found. Skipping evaluation.")
+        return
+    ood_mask = (ood_gts == 1)
+    ind_mask = (ood_gts == 0)
 
-    bin_gap = | avg_confidence_in_bin - accuracy_in_bin |
+    ood_out = anomaly_scores[ood_mask]
+    ind_out = anomaly_scores[ind_mask]
+    if len(ood_out) == 0 or len(ind_out) == 0:
+        print("No valid OOD or IND data available. Skipping evaluation.")
+        return
+    ood_label = np.ones(len(ood_out))
+    ind_label = np.zeros(len(ind_out))
 
-    We then return a weighted average of the gaps, based on the number
-    of samples in each bin
+    val_out = np.concatenate((ind_out, ood_out))
+    val_label = np.concatenate((ind_label, ood_label))
+    # Safeguard for empty concatenation
+    if len(val_label) == 0 or len(val_out) == 0:
+        print("Combined data is empty. Skipping evaluation.")
+        return
+    prc_auc = average_precision_score(val_label, val_out)
+    fpr = fpr_at_95_tpr(val_out, val_label)
 
-    See: Naeini, Mahdi Pakdaman, Gregory F. Cooper, and Milos Hauskrecht.
-    "Obtaining Well Calibrated Probabilities Using Bayesian Binning." AAAI.
-    2015.
-    """
-    def __init__(self, n_bins=15):
-        """
-        n_bins (int): number of confidence interval bins
-        """
-        super(_ECELoss, self).__init__()
-        bin_boundaries = torch.linspace(0, 1, n_bins + 1)
-        self.bin_lowers = bin_boundaries[:-1]
-        self.bin_uppers = bin_boundaries[1:]
+    print(f'AUPRC score: {prc_auc*100.0}')
+    print(f'FPR@TPR95: {fpr*100.0}')
 
-    def forward(self, logits, labels):
-        softmaxes = F.softmax(logits, dim=1)
-        confidences, predictions = torch.max(softmaxes, 1)
-        accuracies = predictions.eq(labels)
+    file.write(('    AUPRC score:' + str(prc_auc*100.0) + '   FPR@TPR95:' + str(fpr*100.0) ))
+    file.close()
 
-        ece = torch.zeros(1, device=logits.device)
-        for bin_lower, bin_upper in zip(self.bin_lowers, self.bin_uppers):
-            # Calculated |confidence - accuracy| in each bin
-            in_bin = confidences.gt(bin_lower.item()) * confidences.le(bin_upper.item())
-            prop_in_bin = in_bin.float().mean()
-            if prop_in_bin.item() > 0:
-                accuracy_in_bin = accuracies[in_bin].float().mean()
-                avg_confidence_in_bin = confidences[in_bin].mean()
-                ece += torch.abs(avg_confidence_in_bin - accuracy_in_bin) * prop_in_bin
-
-        return ece
+if __name__ == '__main__':
+    main()
