@@ -188,8 +188,8 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
-    
-    criterion = rdl.IsoMaxPlusLossSecondPart(model_classifier=model.classifier)
+    model_classifier = model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier
+    criterion = rdl.IsoMaxPlusLossSecondPart(model_classifier=model_classifier)
     
     print("CRITERION: ", type(criterion))
 
