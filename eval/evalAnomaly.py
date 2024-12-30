@@ -81,8 +81,7 @@ def main():
     from pathlib import Path
     base_path = Path(str(args.input))
     print("base_path: ",base_path)
-    files = list(base_path.glob("*.*"))
-    print(base_path.glob("*.*"))
+    files = [base_path / f for f in os.listdir(base_path) if (base_path / f).is_file()]
     print("files: ", files)
     for path in files:
         print("sono dentro")
