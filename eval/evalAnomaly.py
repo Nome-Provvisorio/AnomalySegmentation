@@ -82,6 +82,7 @@ def main():
     base_path = Path(str(args.input))
     print("base_path: ",base_path)
     files = list(base_path.glob("*.*"))
+    print(base_path.glob("*.*"))
     print("files: ", files)
     for path in files:
         print("sono dentro")
