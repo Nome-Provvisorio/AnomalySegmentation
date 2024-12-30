@@ -110,12 +110,13 @@ class MaxEntropyLoss(nn.Module):
         log_probs = F.log_softmax(outputs, dim=1)
         entropy_loss = F.cross_entropy(outputs, targets, weight=self.weight)
 
-        
         # Applicazione dei pesi se forniti
         if self.weight is not None:
             entropy_loss = entropy_loss * self.weight
 
         return entropy_loss.mean()
+
+    import torch
 
 class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
     def __init__(self, weight=None, lambda_reg=1.0):
@@ -130,14 +131,14 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
         self.lambda_reg = lambda_reg
         self.weight = weight
 
-   def forward(self, features, targets):
+    def forward(self, features, targets):
         """
         Compute the Enhanced Isotropy Maximization Loss.
-    
+
         Args:
             features (torch.Tensor): The feature representations (e.g., output of a network layer).
             targets (torch.Tensor): The corresponding class labels.
-    
+
         Returns:
             torch.Tensor: The computed loss.
         """
@@ -145,50 +146,49 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
         if features.dim() == 4:
             batch_size, channels, height, width = features.size()
             features = features.permute(0, 2, 3, 1).reshape(-1, channels)
-    
+
         # Flatten targets if they are 3D (e.g., [batch_size, height, width])
         if targets.dim() == 3:  # [batch_size, height, width]
             targets = targets.view(-1)
         
         # Normalize features to unit vectors
         normalized_features = F.normalize(features, p=2, dim=1)
-    
+
         # Split the features into smaller batches to avoid large memory usage
         batch_size = normalized_features.size(0)
         similarity_loss = 0
         num_batches = (batch_size // 512) + 1  # You can adjust the batch size based on memory constraints
-    
+
         for i in range(num_batches):
             start_idx = i * 512
             end_idx = min((i + 1) * 512, batch_size)
             batch_features = normalized_features[start_idx:end_idx]
-    
+
             # Compute pairwise cosine similarities for this batch
             similarity_matrix = torch.matmul(batch_features, batch_features.t())
-    
+
             # Create a mask to exclude diagonal elements (self-similarity)
             mask = ~torch.eye(similarity_matrix.size(0), dtype=torch.bool, device=similarity_matrix.device)
             
             # Extract off-diagonal elements
             off_diagonal_similarities = similarity_matrix[mask]
-    
+
             # Isotropy loss for this batch
             isotropy_loss = off_diagonal_similarities.pow(2).mean()
             similarity_loss += isotropy_loss
-    
+
         # Average isotropy loss over all batches
         isotropy_loss = similarity_loss / num_batches
-    
+
         # Classification loss (e.g., CrossEntropyLoss)
         classification_loss = F.cross_entropy(features, targets, weight=self.weight)
-    
+
         # Combine losses
         total_loss = classification_loss + self.lambda_reg * isotropy_loss
-    
+
         return total_loss
 
-
-
+    
 
 
 
