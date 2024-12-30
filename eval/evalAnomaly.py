@@ -79,6 +79,7 @@ def main():
     print("Model and weights LOADED successfully")
     model.eval()
 
+    print("Metrica: "+args.metric)
     from pathlib import Path
     base_path = Path(args.input)
     files = list(base_path.glob("*.*"))
@@ -96,19 +97,16 @@ def main():
         # Seleziona la metrica basata sull'argomento
         if args.metric == "msp":
             # MSP
-            print("Metrica: MSP")
             anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
         elif args.metric == "maxentropy":
             # MAXENTROPY
-            print("Metrica: Max Entropy")
             probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
             entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Evita log(0) con epsilon
             anomaly_result = entropy
         
         elif args.metric == "maxlogit":
             # MAXLOGIT
-            print("Metrica: Max Logit")
             anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         #print("Parent: ", path.parent.parent)
