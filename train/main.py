@@ -26,7 +26,7 @@ from transform import Relabel, ToLabel, Colorize
 from visualize import Dashboard
 import importlib
 from iouEval import iouEval, getColorEntry
-from robust_deep_learning as rdl
+import robust_deep_learning as rdl
 from shutil import copyfile
 
 NUM_CHANNELS = 3
