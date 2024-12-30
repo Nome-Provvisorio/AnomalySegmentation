@@ -85,6 +85,7 @@ def main():
 
     base_path = Path(args.input)
     files = list(base_path.glob("*.*"))
+    print("ptha", base_path)
     for path in files:
         print(f"Processing image: {path}")  # Log percorso immagine
         images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
@@ -102,19 +103,19 @@ def main():
             probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
             anomaly_result = 1.0 - np.max(probabilities, axis=0)
         
-         elif args.metric == 'msp':
+        elif args.metric == 'msp':
             # MSP (Maximum Softmax Probability)
             anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
         elif args.metric == 'maxentropy':
             # Entropia massima
-            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
             entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Evita log(0) con epsilon
             anomaly_result = entropy
 
         elif args.metric == 'maxlogit':
             # Massimo logit
-            anomaly_result = 1.0 - np.max(scaled_result.squeeze(0).data.cpu().numpy(), axis=0)
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
         pathGT = path.parent.parent / "labels_masks" / path.stem
         pathGT = pathGT.with_name(pathGT.stem + ".png")
