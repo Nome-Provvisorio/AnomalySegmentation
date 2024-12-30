@@ -146,6 +146,10 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
             batch_size, channels, height, width = features.size()
             features = features.permute(0, 2, 3, 1).reshape(-1, channels)
 
+         # Flatten targets if they are 3D (e.g., [batch_size, height, width])
+        if targets.dim() == 3:  # [batch_size, height, width]
+            targets = targets.view(-1)
+        
         # Normalize features to unit vectors
         normalized_features = F.normalize(features, p=2, dim=1)
 
