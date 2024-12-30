@@ -83,6 +83,7 @@ def main():
     print("base_path: ",base_path)
     files = list(base_path.glob("*.webp"))
     for path in files:
+        print("sono dentro")
         path = Path(path)  # Converte il percorso in un oggetto Path
         print(f"Processing image: {path}")  # Log percorso immagine
 
