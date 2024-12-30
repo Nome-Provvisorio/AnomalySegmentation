@@ -189,7 +189,7 @@ def train(args, model, enc=False):
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
     
-    criterion = rdl.IsoMaxPlusLossFirstPart()
+    criterion = rdl.IsoMaxPlusLossSecondPart()
     
     print("CRITERION: ", type(criterion))
 
