@@ -141,6 +141,11 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
         Returns:
             torch.Tensor: The computed loss.
         """
+        # Flatten spatial dimensions if features are 4D (e.g., [batch_size, channels, height, width])
+        if features.dim() == 4:
+            batch_size, channels, height, width = features.size()
+            features = features.permute(0, 2, 3, 1).reshape(-1, channels)
+
         # Normalize features to unit vectors
         normalized_features = F.normalize(features, p=2, dim=1)
 
