@@ -102,7 +102,7 @@ def main():
 
         #QUESTO è MAXLOGIT
         # Calcola il logit massimo per ogni pixel (prima di softmax)
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)/
 
         #print("Parent: ", path.parent.parent)
 
