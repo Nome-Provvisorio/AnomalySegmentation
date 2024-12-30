@@ -117,22 +117,6 @@ class MaxEntropyLoss(nn.Module):
         return entropy_loss.mean()
 
     import torch
-    
-class EnhancedIsotropyMaximizationLoss(nn.Module):
-    def __init__(self, alpha=1.0, weight=None):
-        super().__init__()
-        # Puoi usare IsoMaxPlusLossFirstPart per ottenere i logits o le rappresentazioni
-        self.classifier = rdl.IsoMaxPlusLossFirstPart(alpha=alpha)
-        self.weight = weight
-
-    def forward(self, outputs, targets):
-        # Calcola la loss usando IsoMaxPlusLossFirstPart
-        loss = self.classifier(outputs, targets)
-        
-        # Se desideri usare i pesi, puoi applicarli
-        if self.weight is not None:
-            loss *= self.weight
-        return loss.mean()
 
 
 def train(args, model, enc=False):
@@ -204,7 +188,8 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
-    criterion = EnhancedIsotropyMaximizationLoss(alpha=1.0, weight=weight)
+    
+    criterion = rdl.IsoMaxPlusLossSecondPart()
     
     print("CRITERION: ", type(criterion))
 
