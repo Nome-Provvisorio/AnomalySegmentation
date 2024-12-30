@@ -26,8 +26,7 @@ from transform import Relabel, ToLabel, Colorize
 from visualize import Dashboard
 import importlib
 from iouEval import iouEval, getColorEntry
-from robust_deep_learning.losses import IsoMaxPlusLossFirstPart
-from robust_deep_learning.losses import IsoMaxPlusLossSecondPart
+from robust_deep_learning as rdl
 from shutil import copyfile
 
 NUM_CHANNELS = 3
@@ -123,7 +122,7 @@ class EnhancedIsotropyMaximizationLoss(nn.Module):
     def __init__(self, alpha=1.0, weight=None):
         super().__init__()
         # Puoi usare IsoMaxPlusLossFirstPart per ottenere i logits o le rappresentazioni
-        self.classifier = IsoMaxPlusLossFirstPart(alpha=alpha)
+        self.classifier = rdl.IsoMaxPlusLossFirstPart(alpha=alpha)
         self.weight = weight
 
     def forward(self, outputs, targets):
