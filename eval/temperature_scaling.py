@@ -32,7 +32,7 @@ def main():
     parser.add_argument(
         "--input",
         default="/home/shyam/Mask2Former/unk-eval/RoadObsticle21/images/*.webp",
-        nargs="+",
+        #nargs="+",
         help="A list of space separated input images; "
              "or a single glob pattern such as 'directory/*.jpg'",
     )
@@ -44,6 +44,8 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--metric', choices=['msp', 'maxentropy', 'maxlogit', 'msp-temperature'], default='msp', help="Tipo di metrica da utilizzare.")
+    parser.add_argument('--temperature', type=float, default=1.0, help="Temperatura per la normalizzazione delle probabilità (default è 1.0).")
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -81,7 +83,7 @@ def main():
     model.eval()
 
 
-    base_path = Path("C:/Users/vcata\Desktop\Validation_Dataset\RoadObsticle21\images")
+    base_path = Path(args.input)
     files = list(base_path.glob("*.*"))
     for path in files:
         print(f"Processing image: {path}")  # Log percorso immagine
@@ -89,7 +91,31 @@ def main():
         images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)
+
+        
         anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+
+         # Seleziona la metrica in base all'argomento
+        if args.metric == 'msp-temperature':
+            # MSP (Maximum Softmax Probability)
+            scaled_result = result / args.temperature
+            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            anomaly_result = 1.0 - np.max(probabilities, axis=0)
+        
+         elif args.metric == 'msp':
+            # MSP (Maximum Softmax Probability)
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        
+        elif args.metric == 'maxentropy':
+            # Entropia massima
+            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Evita log(0) con epsilon
+            anomaly_result = entropy
+
+        elif args.metric == 'maxlogit':
+            # Massimo logit
+            anomaly_result = 1.0 - np.max(scaled_result.squeeze(0).data.cpu().numpy(), axis=0)
+        
         pathGT = path.parent.parent / "labels_masks" / path.stem
         pathGT = pathGT.with_name(pathGT.stem + ".png")
         if "RoadObsticle21" in str(pathGT):
