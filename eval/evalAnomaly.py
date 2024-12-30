@@ -97,7 +97,12 @@ def main():
         # Seleziona la metrica basata sull'argomento
         if args.metric == "msp":
             # MSP
-            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+            temperature = 0.01  # Puoi cambiare questo valore
+            scaled_result = result / temperature
+            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            anomaly_result = 1.0 - np.max(probabilities, axis=0)
+        
+            #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
         elif args.metric == "maxentropy":
             # MAXENTROPY
