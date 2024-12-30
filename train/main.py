@@ -146,15 +146,25 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
             batch_size, channels, height, width = features.size()
             features = features.permute(0, 2, 3, 1).reshape(-1, channels)
 
-         # Flatten targets if they are 3D (e.g., [batch_size, height, width])
+        # Flatten targets if they are 3D (e.g., [batch_size, height, width])
         if targets.dim() == 3:  # [batch_size, height, width]
             targets = targets.view(-1)
         
         # Normalize features to unit vectors
         normalized_features = F.normalize(features, p=2, dim=1)
 
-        # Compute pairwise cosine similarities
-        similarity_matrix = torch.matmul(normalized_features, normalized_features.t())
+        # Riduci la memoria calcolando la similarità su sottogruppi
+        batch_size = normalized_features.size(0)
+        if batch_size > 2048:  # Arbitraria soglia per dividere in sottogruppi
+            similarity_matrix = []
+            step = 2048
+            for i in range(0, batch_size, step):
+                end = min(i + step, batch_size)
+                similarity_part = torch.matmul(normalized_features[i:end], normalized_features.t())
+                similarity_matrix.append(similarity_part)
+            similarity_matrix = torch.cat(similarity_matrix, dim=0)
+        else:
+            similarity_matrix = torch.matmul(normalized_features, normalized_features.t())
 
         # Create a mask to exclude diagonal elements (self-similarity)
         mask = ~torch.eye(similarity_matrix.size(0), dtype=torch.bool, device=similarity_matrix.device)
@@ -172,6 +182,7 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
         total_loss = classification_loss + self.lambda_reg * isotropy_loss
 
         return total_loss
+
 
 
 
