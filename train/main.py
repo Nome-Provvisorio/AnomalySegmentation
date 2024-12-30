@@ -126,7 +126,7 @@ class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
             beta (float): Weight for the isotropy regularization term.
             weight (torch.Tensor): Tensor of weights for class imbalance (optional).
         """
-        super(EnhancedIsotropyMaximizationLoss, self).init()
+        super(EnhancedIsotropyMaximizationLoss, self).__init__()
         self.alpha = alpha
         self.beta = beta
         self.weight = weight  # Class weights
