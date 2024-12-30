@@ -521,6 +521,8 @@ def main(args):
     
     if args.cuda:
         model = torch.nn.DataParallel(model).cuda()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = model.to(device)
     
     if args.state:
         #if args.state is provided then load this state for training
