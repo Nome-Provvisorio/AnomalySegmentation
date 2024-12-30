@@ -30,7 +30,7 @@ def main():
     parser.add_argument(
         "--input",
         default="/home/shyam/Mask2Former/unk-eval/RoadObsticle21/images/*.webp",
-        nargs="+",
+        #nargs="+",
         help="A list of space separated input images; "
              "or a single glob pattern such as 'directory/*.jpg'",
     )
