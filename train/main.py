@@ -119,36 +119,48 @@ class MaxEntropyLoss(nn.Module):
     import torch
 
 class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
-    def __init__(self, alpha=1.0, beta=0.1, weight=None):
+    def __init__(self, alpha=1.0):
         """
+        Inizializza la classe di perdita EnhancedIsotropyMaximizationLoss.
+        
         Args:
-            alpha (float): Weight for the cross-entropy loss component.
-            beta (float): Weight for the isotropy regularization term.
-            weight (torch.Tensor): Tensor of weights for class imbalance (optional).
+        - alpha (float): Un iperparametro che bilancia la forza dell'ottimizzazione.
         """
         super(EnhancedIsotropyMaximizationLoss, self).__init__()
         self.alpha = alpha
-        self.beta = beta
-        self.weight = weight  # Class weights
 
-    def forward(self, logits, targets):
-        # Cross-entropy loss with class weights
-        ce_loss = F.cross_entropy(logits, targets, weight=self.weight)
+    def forward(self, embeddings, weights):
+        """
+        Calcola la perdita di massimizzazione dell'isotropia, ponderata dai pesi.
 
-        # Compute the isotropy regularization term
-        logits_normalized = F.normalize(logits, dim=1)  # Normalize logits along the class dimension
-        batch_size = logits.size(0)
-        
-        # Ensure logits_normalized is 2D (batch_size, num_classes)
-        if logits_normalized.dim() > 2:
-            logits_normalized = logits_normalized.view(batch_size, -1)  # Flatten the remaining dimensions
+        Args:
+        - embeddings (Tensor): Un tensore 2D di embedding, dove ogni riga è un vettore di embedding.
+        - weights (Tensor): Un tensore 1D di pesi per ciascun embedding. Deve essere della stessa lunghezza del batch di embeddings.
 
-        # Compute isotropy term
-        isotropy_term = torch.sum(torch.mm(logits_normalized, logits_normalized.T)**2) / (batch_size**2)
+        Returns:
+        - loss (Tensor): Il valore della perdita di isotropia ponderata.
+        """
+        # Verifica che le dimensioni dei pesi siano corrette
+        if weights.size(0) != embeddings.size(0):
+            raise ValueError("La dimensione dei pesi deve corrispondere al numero di embedding.")
 
-        # Combine the loss components
-        total_loss = self.alpha * ce_loss - self.beta * isotropy_term
-        return total_loss
+        # Normalizzare gli embedding
+        norm_embeddings = F.normalize(embeddings, p=2, dim=1)
+
+        # Calcolare il prodotto scalare tra tutte le coppie di vettori normalizzati
+        similarity_matrix = torch.mm(norm_embeddings, norm_embeddings.t())
+
+        # Calcolare la matrice di identità
+        identity_matrix = torch.eye(similarity_matrix.size(0), device=similarity_matrix.device)
+
+        # La perdita è minimizzata quando la matrice di similarità è vicina all'identità
+        loss_matrix = (similarity_matrix - identity_matrix) ** 2
+
+        # Pondera la perdita in base ai pesi
+        weighted_loss = torch.sum(weights.unsqueeze(1) * weights.unsqueeze(0) * loss_matrix)
+
+        # Applicare l'iperparametro alpha per bilanciare la perdita
+        return self.alpha * weighted_loss
 
 
 
@@ -223,7 +235,7 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
-    criterion = EnhancedIsotropyMaximizationLoss(alpha=1.0, beta=0.1, weight=weight)
+    criterion = EnhancedIsotropyMaximizationLoss(alpha=1.0, weight=weight)
     
     print(type(criterion))
 
