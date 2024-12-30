@@ -1,38 +1,46 @@
-import os
-import torch
-import numpy as np
-from PIL import Image
-from pathlib import Path
-from sklearn.metrics import average_precision_score, roc_curve
-from torch.nn.functional import softmax
-from torchvision.transforms import Compose, Resize, ToTensor
-import cv2
+# Code to calculate IoU (mean and per-class) in a dataset
+# Nov 2017
+# Eduardo Romera
+#######################
 
+import numpy as np
+import torch
+import torch.nn.functional as F
+import os
+import importlib
+import time
+
+from PIL import Image
+from argparse import ArgumentParser
+
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+from torchvision.transforms import Compose, CenterCrop, Normalize, Resize
+from torchvision.transforms import ToTensor, ToPILImage
+
+from dataset import cityscapes
+from erfnet import ERFNet
+from transform import Relabel, ToLabel, Colorize
+from iouEval import iouEval, getColorEntry
+
+NUM_CHANNELS = 3
 NUM_CLASSES = 20
 
-# Define threshold for anomaly detection
-threshold = 0.5  # Adjustable
+def apply_temperature_scaling(logits, temperature):
+    return logits / temperature
 
-def maxEntropy(outputs):
-    """
-    Calcola l'entropia massima per ogni pixel nell'output del modello.
-
-    Args:
-        outputs (torch.Tensor): Output del modello (batch_size, num_classes, height, width).
-
-    Returns:
-        torch.Tensor: Tensor contenente l'entropia per pixel (batch_size, 1, height, width).
-    """
-    probabilities = softmax(outputs, dim=1)  # Probabilità per ogni classe
-    entropy = -torch.sum(probabilities * torch.log(probabilities + 1e-9), dim=1, keepdim=True)
-    return entropy
+image_transform = ToPILImage()
+input_transform_cityscapes = Compose([
+    Resize(512, Image.BILINEAR),
+    ToTensor(),
+])
+target_transform_cityscapes = Compose([
+    Resize(512, Image.NEAREST),
+    ToLabel(),
+    Relabel(255, 19),   #ignore label to 19
+])
 
 def main(args):
-
-    # Inizializza file dei risultati
-    if not os.path.exists('results.txt'):
-        open('results.txt', 'w').close()
-    file = open('results.txt', 'a')
 
     modelpath = args.loadDir + args.loadModel
     weightspath = args.loadDir + args.loadWeights
@@ -42,10 +50,11 @@ def main(args):
 
     model = ERFNet(NUM_CLASSES)
 
-    if not args.cpu:
+    #model = torch.nn.DataParallel(model)
+    if (not args.cpu):
         model = torch.nn.DataParallel(model).cuda()
 
-    def load_my_state_dict(model, state_dict):
+    def load_my_state_dict(model, state_dict):  #custom function to load model when not all dict elements
         own_state = model.state_dict()
         for name, param in state_dict.items():
             if name not in own_state:
@@ -60,77 +69,86 @@ def main(args):
 
     model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
     print("Model and weights LOADED successfully")
+
     model.eval()
 
-    base_path = Path("C:/Users/vcata/Downloads/dataset_ObstacleTrack/images")
-    files = list(base_path.glob("*.webp"))
+    if(not os.path.exists(args.datadir)):
+        print("Error: datadir could not be loaded")
 
-    ood_gts_list = []
-    anomaly_score_list = []
+    loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset), num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
-    for path in files:
-        path = Path(path)  # Convert path to a Path object
-        print(f"Processing image: {path}")
+    iouEvalVal = iouEval(NUM_CLASSES)
 
-        # Caricamento immagine
-        images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
-        images = images.permute(0, 3, 1, 2)
+    start = time.time()
 
+    temperature = 1.1  # Temperature scaling factor
+
+    for step, (images, labels, filename, filenameGt) in enumerate(loader):
+        if (not args.cpu):
+            images = images.cuda()
+            labels = labels.cuda()
+
+        inputs = Variable(images)
         with torch.no_grad():
-            result = model(images)
+            outputs = model(inputs)
+            outputs = apply_temperature_scaling(outputs, temperature)
 
-        # Calcolo Max Entropy
-        max_entropy = maxEntropy(result).squeeze(0).cpu().numpy()
+        iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, labels)
 
-        # Creazione della mappa binaria di anomalie
-        binary_anomaly_map = (max_entropy > threshold).astype(np.uint8)
+        filenameSave = filename[0].split("leftImg8bit/")[1]
 
-        # Caricamento della ground truth OOD
-        path_semantic = path.parent.parent / "labels_masks" / path.stem
-        path_semantic = path_semantic.with_name(path_semantic.stem + "_labels_semantic.png")
+        print(step, filenameSave)
 
-        try:
-            semantic_mask = np.array(Image.open(path_semantic))
+    iouVal, iou_classes = iouEvalVal.getIoU()
 
-            # Ground truth binaria: 1 per OOD, 0 per IND
-            combined_mask = (semantic_mask == 2).astype(np.uint8)
+    iou_classes_str = []
+    for i in range(iou_classes.size(0)):
+        iouStr = getColorEntry(iou_classes[i])+'{:0.2f}'.format(iou_classes[i]*100) + '\033[0m'
+        iou_classes_str.append(iouStr)
 
-            # Aggiungi i dati a liste
-            ood_gts_list.append(combined_mask)
-            anomaly_score_list.append(max_entropy)
+    print("---------------------------------------")
+    print("Took ", time.time()-start, "seconds")
+    print("=======================================")
+    print("Per-Class IoU:")
+    print(iou_classes_str[0], "Road")
+    print(iou_classes_str[1], "sidewalk")
+    print(iou_classes_str[2], "building")
+    print(iou_classes_str[3], "wall")
+    print(iou_classes_str[4], "fence")
+    print(iou_classes_str[5], "pole")
+    print(iou_classes_str[6], "traffic light")
+    print(iou_classes_str[7], "traffic sign")
+    print(iou_classes_str[8], "vegetation")
+    print(iou_classes_str[9], "terrain")
+    print(iou_classes_str[10], "sky")
+    print(iou_classes_str[11], "person")
+    print(iou_classes_str[12], "rider")
+    print(iou_classes_str[13], "car")
+    print(iou_classes_str[14], "truck")
+    print(iou_classes_str[15], "bus")
+    print(iou_classes_str[16], "train")
+    print(iou_classes_str[17], "motorcycle")
+    print(iou_classes_str[18], "bicycle")
+    print("=======================================")
+    iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
+    print("MEAN IoU: ", iouStr, "%")
 
-        except Exception as e:
-            print(f"Error processing {path}: {e}")
-            continue
+    # Save mean IoU to file
+    with open("temperature.txt", "a") as file:
+        file.write(f"Temperature: {temperature}, Mean IoU: {iouVal*100:.2f}%\n")
 
-    # Calcolo delle metriche
-    if len(ood_gts_list) > 0 and len(anomaly_score_list) > 0:
-        ood_gts = np.concatenate([m.flatten() for m in ood_gts_list])
-        anomaly_scores = np.concatenate([a.flatten() for a in anomaly_score_list])
+if __name__ == '__main__':
+    parser = ArgumentParser()
 
-        # Calcolo FPR@95 e AUPRC
-        fpr, tpr, thresholds = roc_curve(ood_gts, anomaly_scores)
-        auprc = average_precision_score(ood_gts, anomaly_scores)
+    parser.add_argument('--state')
 
-        # Calcolo FPR al TPR 95%
-        idx = np.where(tpr >= 0.95)[0][0]
-        fpr95 = fpr[idx]
+    parser.add_argument('--loadDir',default="../trained_models/")
+    parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
+    parser.add_argument('--loadModel', default="erfnet.py")
+    parser.add_argument('--subset', default="val")  #can be val or train (must have labels)
+    parser.add_argument('--datadir', default="/home/shyam/ViT-Adapter/segmentation/data/cityscapes/")
+    parser.add_argument('--num-workers', type=int, default=4)
+    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--cpu', action='store_true')
 
-        print(f"AUPRC: {auprc * 100:.2f}%")
-        print(f"FPR@95: {fpr95 * 100:.2f}%")
-
-        file.write(('AUPRC score:' + str(auprc * 100.0) + '   FPR@TPR95:' + str(fpr95 * 100.0)))
-    else:
-        print("Errore: nessun dato valido per il calcolo delle metriche.")
-
-    file.close()
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--loadDir', type=str, required=True, help='Directory of the model')
-    parser.add_argument('--loadModel', type=str, required=True, help='Model file name')
-    parser.add_argument('--loadWeights', type=str, required=True, help='Weights file name')
-    parser.add_argument('--cpu', action='store_true', help='Use CPU instead of GPU')
-    args = parser.parse_args()
-    main(args)
+    main(parser.parse_args())

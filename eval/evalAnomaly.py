@@ -93,7 +93,7 @@ def main():
     model.eval()
 
     from pathlib import Path
-    base_path = Path("/kaggle/input/smiyc-road-obstacles-21/dataset_ObstacleTrack/images")
+    base_path = Path("C:/Users/vcata\Downloads\dataset_ObstacleTrack/images")
     files = list(base_path.glob("*.webp"))
 
     for path in files:
