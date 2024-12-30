@@ -30,7 +30,7 @@ def main():
     parser.add_argument(
         "--input",
         default="/home/shyam/Mask2Former/unk-eval/RoadObsticle21/images/*.webp",
-        nargs="+",
+        #nargs="+",
         help="A list of space separated input images; "
              "or a single glob pattern such as 'directory/*.jpg'",
     )
@@ -42,6 +42,8 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument("--metric", required=True, choices=["msp", "maxentropy", "maxlogit","msp-temperature"])
+    parser.add_argument("--temperature", type=float, default=1.0, help="Temperatura per la normalizzazione delle probabilità (default è 1.0).")
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -78,8 +80,9 @@ def main():
     print("Model and weights LOADED successfully")
     model.eval()
 
+    print("Metrica: "+args.metric)
     from pathlib import Path
-    base_path = Path("C:/Users/vcata\Desktop\Validation_Dataset\RoadAnomaly21\images/")
+    base_path = Path(args.input)
     files = list(base_path.glob("*.*"))
     for path in files:
         path = Path(path)  # Converte il percorso in un oggetto Path
@@ -92,35 +95,28 @@ def main():
             result = model(images)
 
 
-        ## QUESTO è MSP
+        # Seleziona la metrica basata sull'argomento
+        if args.metric == "msp-temperature":
+            # MSP
+            scaled_result = result / args.temperature
+            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            anomaly_result = 1.0 - np.max(probabilities, axis=0)
 
-        # TEMP
-        temperature = 1.1  # Ad esempio, 0.5 o 2.0
-        epsilon = 1e-10  # Offset per evitare instabilità numeriche
-
-        # Estrai e stabilizza i logits
-        logits = result.squeeze(0).data.cpu().numpy()
-        logits_stabilized = logits - np.max(logits, axis=0, keepdims=True)
-
-        # Calcola le probabilità con softmax stabile
-        probabilities = np.exp(logits_stabilized / temperature) / (np.sum(np.exp(logits_stabilized / temperature), axis=0) + epsilon)
-
-        # Calcola il risultato di anomalia
-        anomaly_result = 1.0 - np.max(probabilities, axis=0)
-
-
-
-        # NO TEMP
-        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+            #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        # Seleziona la metrica basata sull'argomento
+        elif args.metric == "msp":
+            # MSP
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
-        ## QUESTO è MAXENTROPY
-        # probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
-        # entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
-        # anomaly_result = entropy
+        elif args.metric == "maxentropy":
+            # MAXENTROPY
+            probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
+            entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Evita log(0) con epsilon
+            anomaly_result = entropy
 
-        #QUESTO è MAXLOGIT
-        # Calcola il logit massimo per ogni pixel (prima di softmax)
-        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        elif args.metric == "maxlogit":
+            # MAXLOGIT
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         #print("Parent: ", path.parent.parent)
 
