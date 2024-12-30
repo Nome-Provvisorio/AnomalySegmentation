@@ -79,7 +79,8 @@ def main():
     model.eval()
 
     from pathlib import Path
-    base_path = Path("/kaggle/input/smiyc-road-obstacles-validation/dataset_ObstacleTrack/images")
+    dataset_path= Path(args.input)
+    base_path = dataset_path
     print("base_path: ",base_path)
     files = list(base_path.glob("*.*"))
     print("files: ", files)
