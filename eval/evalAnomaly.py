@@ -79,8 +79,7 @@ def main():
     model.eval()
 
     from pathlib import Path
-    dataset_path= Path(args.input)
-    base_path = dataset_path
+    base_path = Path(args.input)
     print("base_path: ",base_path)
     files = list(base_path.glob("*.*"))
     print("files: ", files)
