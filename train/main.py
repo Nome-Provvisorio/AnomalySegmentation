@@ -24,7 +24,6 @@ import torch.nn.functional as F
 from dataset import VOC12,cityscapes
 from transform import Relabel, ToLabel, Colorize
 from visualize import Dashboard
-from openloss import MaximalEntropyLoss
 import importlib
 from iouEval import iouEval, getColorEntry
 
