@@ -79,8 +79,8 @@ def main():
     model.eval()
 
     from pathlib import Path
-    base_path = Path("/kaggle/input/smiyc-road-obstacles-validation/dataset_ObstacleTrack/images")
-    files = list(base_path.glob("*.webp"))
+    base_path = Path("C:/Users/vcata\Desktop\Validation_Dataset\RoadAnomaly21\images/")
+    files = list(base_path.glob("*.*"))
     for path in files:
         path = Path(path)  # Converte il percorso in un oggetto Path
         print(f"Processing image: {path}")  # Log percorso immagine
@@ -93,16 +93,34 @@ def main():
 
 
         ## QUESTO è MSP
-        #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+
+        # TEMP
+        temperature = 1.1  # Ad esempio, 0.5 o 2.0
+        epsilon = 1e-10  # Offset per evitare instabilità numeriche
+
+        # Estrai e stabilizza i logits
+        logits = result.squeeze(0).data.cpu().numpy()
+        logits_stabilized = logits - np.max(logits, axis=0, keepdims=True)
+
+        # Calcola le probabilità con softmax stabile
+        probabilities = np.exp(logits_stabilized / temperature) / (np.sum(np.exp(logits_stabilized / temperature), axis=0) + epsilon)
+
+        # Calcola il risultato di anomalia
+        anomaly_result = 1.0 - np.max(probabilities, axis=0)
+
+
+
+        # NO TEMP
+        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
         ## QUESTO è MAXENTROPY
-        probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
-        entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
-        anomaly_result = entropy
+        # probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
+        # entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
+        # anomaly_result = entropy
 
         #QUESTO è MAXLOGIT
         # Calcola il logit massimo per ogni pixel (prima di softmax)
-        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)/
+        # anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         #print("Parent: ", path.parent.parent)
 
