@@ -79,9 +79,9 @@ def main():
     model.eval()
 
     from pathlib import Path
-    base_path = Path(str(args.input))
+    base_path = Path("/kaggle/input/smiyc-road-obstacles-validation/dataset_ObstacleTrack/images")
     print("base_path: ",base_path)
-    files = [base_path / f for f in os.listdir(base_path) if (base_path / f).is_file()]
+    files = list(base_path.glob("*.*"))
     print("files: ", files)
     for path in files:
         print("sono dentro")
