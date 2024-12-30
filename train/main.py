@@ -119,7 +119,7 @@ class MaxEntropyLoss(nn.Module):
     import torch
 
 class EnhancedIsotropyMaximizationLoss(torch.nn.Module):
-    def init(self, alpha=1.0, beta=0.1, weight=None):
+    def __init__(self, alpha=1.0, beta=0.1, weight=None):
         """
         Args:
             alpha (float): Weight for the cross-entropy loss component.
