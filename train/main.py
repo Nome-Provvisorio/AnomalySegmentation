@@ -279,7 +279,7 @@ def train(args, model, enc=False):
 
             optimizer.zero_grad()
             
-            loss = criterion(outputs, targets[:, 0])
+            loss = criterion(outputs, targets[:, 0],long())
             #loss = criterion(outputs)
 
             loss.backward()
