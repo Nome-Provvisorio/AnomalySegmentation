@@ -42,7 +42,8 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
-    parser.add_argument("--metric", required=True, choices=["msp", "maxentropy", "maxlogit"])
+    parser.add_argument("--metric", required=True, choices=["msp", "maxentropy", "maxlogit","msp-temperature"])
+    parser.add_argument("--temperature", type=float, default=1.0, help="Temperatura per la normalizzazione delle probabilità (default è 1.0).")
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -93,16 +94,19 @@ def main():
         with torch.no_grad():
             result = model(images)
 
-
+        
         # Seleziona la metrica basata sull'argomento
-        if args.metric == "msp":
+        if args.metric == "msp-temperature":
             # MSP
-            temperature = 1.1  # Puoi cambiare questo valore
-            scaled_result = result / temperature
+            scaled_result = result / args.temperature
             probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
             anomaly_result = 1.0 - np.max(probabilities, axis=0)
         
             #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        # Seleziona la metrica basata sull'argomento
+        elif args.metric == "msp":
+            # MSP
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
         
         elif args.metric == "maxentropy":
             # MAXENTROPY
