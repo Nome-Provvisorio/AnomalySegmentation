@@ -83,7 +83,6 @@ def main():
     base_path = Path(args.input)
     files = list(base_path.glob("*.*"))
     for path in files:
-        print("sono dentro")
         path = Path(path)  # Converte il percorso in un oggetto Path
         print(f"Processing image: {path}")  # Log percorso immagine
 
