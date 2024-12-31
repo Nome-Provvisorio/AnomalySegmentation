@@ -280,7 +280,7 @@ def train(args, model, enc=False):
             targets = targets[:, 0].to(outputs.device).long()
             
             optimizer.zero_grad()
-            
+            assert targets.device == outputs.device, "Targets and outputs are on different devices!"
             loss = criterion(outputs, targets)
             #loss = criterion(outputs)
 
