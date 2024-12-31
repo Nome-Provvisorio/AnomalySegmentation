@@ -122,8 +122,8 @@ class IsoMaxPlusLossSecondPart(nn.Module):
         ##############################################################################
         num_classes = logits.size(1)
         targets_one_hot = torch.eye(num_classes, device=targets.device)[targets].long()
-        probabilities_for_training = nn.Softmax(dim=1)(self.entropic_scale * logits)
-        probabilities_at_targets = probabilities_for_training[range(logits.size(0)), targets]
+        probabilities_for_training = torch.nn.functional.softmax(logits, dim=1)
+        probabilities_at_targets = probabilities_for_training[range(logits.size(0)), targets.view(-1)]
         loss = -torch.log(probabilities_at_targets).mean()
 
         if not self.debug:
