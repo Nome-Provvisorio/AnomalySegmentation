@@ -34,6 +34,7 @@ NUM_CLASSES = 20 #pascal=22, cityscapes=20
 
 color_transform = Colorize(NUM_CLASSES)
 image_transform = ToPILImage()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #Augmentations - different function implemented to perform random augments on both image and target
 class MyCoTransform(object):
@@ -120,7 +121,7 @@ class IsoMaxPlusLossSecondPart(nn.Module):
         ##############################################################################
         ##############################################################################
         num_classes = logits.size(1)
-        targets_one_hot = torch.eye(num_classes)[targets].long()
+        targets_one_hot = torch.eye(num_classes, device=targets.device)[targets].long()
         probabilities_for_training = nn.Softmax(dim=1)(self.entropic_scale * logits)
         probabilities_at_targets = probabilities_for_training[range(logits.size(0)), targets]
         loss = -torch.log(probabilities_at_targets).mean()
