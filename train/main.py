@@ -184,12 +184,12 @@ def train(args, model, enc=False):
         
     ### CHANGE THE LOSS FUNCTION HERE 
     
-    #criterion = CrossEntropyLoss2d(weight)
+    criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
     #model_classifier = model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier
-    criterion = rdl.IsoMaxPlusLossSecondPart(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier)
+    #criterion = rdl.IsoMaxPlusLossSecondPart(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier)
     
     print("CRITERION: ", type(criterion))
 
@@ -277,11 +277,8 @@ def train(args, model, enc=False):
             
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
             
-            targets = targets[:, 0].to(outputs.device).long()
-            
             optimizer.zero_grad()
-            assert targets.device == outputs.device, "Targets and outputs are on different devices!"
-            loss = criterion(outputs, targets)
+            loss = criterion(outputs, targets[:, 0])
             #loss = criterion(outputs)
 
             loss.backward()
