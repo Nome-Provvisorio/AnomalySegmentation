@@ -184,12 +184,12 @@ def train(args, model, enc=False):
         
     ### CHANGE THE LOSS FUNCTION HERE 
     
-    criterion = CrossEntropyLoss2d(weight)
+    #criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
-    #model_classifier = model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier
-    #criterion = rdl.IsoMaxPlusLossSecondPart(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier)
+
+    criterion = rdl.DisMaxLossSecondPart(model.classifier, gpu=None)
     
     print("CRITERION: ", type(criterion))
 
