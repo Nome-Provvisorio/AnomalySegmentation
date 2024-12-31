@@ -303,6 +303,7 @@ def train(args, model, enc=False):
                 images = images.cuda()
                 labels = labels.cuda()
 
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             inputs = Variable(images)
             targets = Variable(labels)
             outputs = model(inputs, only_encode=enc)
