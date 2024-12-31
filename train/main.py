@@ -120,7 +120,7 @@ class IsoMaxPlusLossSecondPart(nn.Module):
         ##############################################################################
         ##############################################################################
         num_classes = logits.size(1)
-        targets_one_hot = torch.eye(num_classes)[targets].long().cuda(self.gpu)
+        targets_one_hot = torch.eye(num_classes)[targets].long()
         probabilities_for_training = nn.Softmax(dim=1)(self.entropic_scale * logits)
         probabilities_at_targets = probabilities_for_training[range(logits.size(0)), targets]
         loss = -torch.log(probabilities_at_targets).mean()
