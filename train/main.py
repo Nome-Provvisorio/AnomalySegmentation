@@ -306,13 +306,14 @@ def train(args, model, enc=False):
             inputs = Variable(images)
             targets = Variable(labels)
             outputs = model(inputs, only_encode=enc)
-            
+            inputs = inputs.to(device)
+            targets = targets.to(device)
             #outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
             
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
             
             optimizer.zero_grad()
-            loss = criterion(outputs, targets[:, 0])
+            loss = criterion(outputs, targets[:, 0].long())
             #loss = criterion(outputs)
 
             loss.backward()
