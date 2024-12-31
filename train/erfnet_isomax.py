@@ -150,9 +150,10 @@ class Net(nn.Module):
 
     def forward(self, input, only_encode=False):
         if only_encode:
-            return self.encoder.forward(input, predict=True)
+            features = self.encoder.forward(input, predict=True)
+            return features  # Ritorna solo le feature se richiesto
         else:
-            output = self.encoder(input)  #predict=False by default
-            output = self.decoder(output)
-            return output
-
+            features = self.encoder(input)  #predict=False by default
+            logits = self.classifier(features)  # Passa le feature al classificatore
+            output = self.decoder(features)
+            return output, logits  # Restituisci sia il decoder che i logit
