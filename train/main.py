@@ -315,7 +315,7 @@ def train(args, model, enc=False):
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
             
             optimizer.zero_grad()
-            loss = criterion(outputs, targets[:, 0].long())
+            loss = criterion(outputs, targets[:, 0])
             #loss = criterion(outputs)
 
             loss.backward()
