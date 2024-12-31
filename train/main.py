@@ -189,7 +189,7 @@ def train(args, model, enc=False):
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
 
-    criterion = rdl.DisMaxLossSecondPart(model.classifier, gpu=None)
+    criterion = rdl.DisMaxLossSecondPart(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, gpu=None)
     
     print("CRITERION: ", type(criterion))
 
