@@ -188,8 +188,8 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
-    model_classifier = model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier
-    criterion = rdl.IsoMaxPlusLossSecondPart(model_classifier=model_classifier)
+    #model_classifier = model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier
+    criterion = rdl.IsoMaxPlusLossSecondPart(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier)
     
     print("CRITERION: ", type(criterion))
 
@@ -276,10 +276,12 @@ def train(args, model, enc=False):
             #outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
             
             #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
-
+            
+            targets = targets[:, 0].to(outputs.device).long()
+            
             optimizer.zero_grad()
             
-            loss = criterion(outputs, targets[:, 0].long())
+            loss = criterion(outputs, targets)
             #loss = criterion(outputs)
 
             loss.backward()
