@@ -100,6 +100,40 @@ class MaxLogitLoss(torch.nn.Module):
         loss = max_logits - target_logits
         return loss.mean()
 
+class IsoMaxPlusLossSecondPart(nn.Module):
+    """This part replaces the nn.CrossEntropyLoss()"""
+    def __init__(self, model_classifier, debug=False, gpu=None):
+        super(IsoMaxPlusLossSecondPart, self).__init__()
+        self.model_classifier = model_classifier
+        self.entropic_scale = 10.0
+        self.debug = debug
+        self.gpu = gpu
+
+    def preprocess(self, inputs, targets):
+        return inputs, targets
+
+    def forward(self, logits, targets):
+        ##############################################################################
+        ##############################################################################
+        """Probabilities and logarithms are calculated separately and sequentially."""
+        """Therefore, nn.CrossEntropyLoss() must not be used to calculate the loss."""
+        ##############################################################################
+        ##############################################################################
+        num_classes = logits.size(1)
+        targets_one_hot = torch.eye(num_classes)[targets].long()
+        probabilities_for_training = nn.Softmax(dim=1)(self.entropic_scale * logits)
+        probabilities_at_targets = probabilities_for_training[range(logits.size(0)), targets]
+        loss = -torch.log(probabilities_at_targets).mean()
+
+        if not self.debug:
+            return loss
+        else:
+            intra_inter_logits = torch.where(targets_one_hot != 0, logits, torch.Tensor([float('Inf')]).cuda(self.gpu))
+            inter_intra_logits = torch.where(targets_one_hot != 0, torch.Tensor([float('Inf')]).cuda(self.gpu), logits)
+            intra_logits = intra_inter_logits[intra_inter_logits != float('Inf')].detach().cpu().numpy()
+            inter_logits = inter_intra_logits[inter_intra_logits != float('Inf')].detach().cpu().numpy()
+            return loss, self.model_classifier.distance_scale.item(), inter_logits, intra_logits
+
 class MaxEntropyLoss(nn.Module):
     def __init__(self, weight=None):
         super().__init__()
@@ -116,7 +150,7 @@ class MaxEntropyLoss(nn.Module):
 
         return entropy_loss.mean()
 
-    import torch
+    
 
 
 def train(args, model, enc=False):
@@ -189,7 +223,7 @@ def train(args, model, enc=False):
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
 
-    criterion = rdl.DisMaxLossSecondPart(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, gpu=None)
+    criterion = DisMaxLossSecondPart(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, gpu=None)
     
     print("CRITERION: ", type(criterion))
 
