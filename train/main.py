@@ -125,43 +125,33 @@ class EnhancedMaxLogitLoss(nn.Module):
         return inputs, targets
 
     def forward(self, logits, targets):
-    """
-    Compute the Enhanced Max Logit Loss.
-
-    Args:
-        logits (Tensor): Predicted logits of shape (batch_size, num_classes).
-        targets (Tensor): Ground truth labels of shape (batch_size,).
-
-    Returns:
-        loss (Tensor): The computed loss.
-    """
-    # Convert targets to one-hot representation
-    num_classes = logits.size(1)
-    device = logits.device  # Ensure all tensors are on the same device
-    targets_one_hot = torch.eye(num_classes, device=device)[targets]
-    
-    # Calculate softmax probabilities with entropic scaling
-    probabilities = nn.Softmax(dim=1)(self.entropic_scale * logits)
-    
-    # Extract probabilities corresponding to true targets
-    probabilities_at_targets = probabilities[range(logits.size(0)), targets]
-    
-    # Compute max logit for each prediction
-    max_logits = torch.max(logits, dim=1).values
-    
-    # Combine the loss using probabilities and max logits
-    loss = -torch.log(probabilities_at_targets).mean() + max_logits.mean()
-
-    if not self.debug:
-        return loss
-    else:
-        # Debugging mode: return additional information
-        intra_inter_logits = torch.where(targets_one_hot != 0, logits, torch.Tensor([float('Inf')], device=device))
-        inter_intra_logits = torch.where(targets_one_hot != 0, torch.Tensor([float('Inf')], device=device), logits)
+        # Convert targets to one-hot representation
+        num_classes = logits.size(1)
+        device = logits.device  # Ensure all tensors are on the same device
+        targets_one_hot = torch.eye(num_classes, device=device)[targets]
         
-        intra_logits = intra_inter_logits[intra_inter_logits != float('Inf')].detach().cpu().numpy()
-        inter_logits = inter_intra_logits[inter_intra_logits != float('Inf')].detach().cpu().numpy()
-        return loss, self.model_classifier.distance_scale.item(), inter_logits, intra_logits
+        # Calculate softmax probabilities with entropic scaling
+        probabilities = nn.Softmax(dim=1)(self.entropic_scale * logits)
+        
+        # Extract probabilities corresponding to true targets
+        probabilities_at_targets = probabilities[range(logits.size(0)), targets]
+        
+        # Compute max logit for each prediction
+        max_logits = torch.max(logits, dim=1).values
+        
+        # Combine the loss using probabilities and max logits
+        loss = -torch.log(probabilities_at_targets).mean() + max_logits.mean()
+    
+        if not self.debug:
+            return loss
+        else:
+            # Debugging mode: return additional information
+            intra_inter_logits = torch.where(targets_one_hot != 0, logits, torch.Tensor([float('Inf')], device=device))
+            inter_intra_logits = torch.where(targets_one_hot != 0, torch.Tensor([float('Inf')], device=device), logits)
+            
+            intra_logits = intra_inter_logits[intra_inter_logits != float('Inf')].detach().cpu().numpy()
+            inter_logits = inter_intra_logits[inter_intra_logits != float('Inf')].detach().cpu().numpy()
+            return loss, self.model_classifier.distance_scale.item(), inter_logits, intra_logits
 
 
 
