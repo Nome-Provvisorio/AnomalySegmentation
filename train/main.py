@@ -148,24 +148,31 @@ class EnhancedMaxLogitLoss(nn.Module):
         probabilities = nn.Softmax(dim=1)(self.entropic_scale * logits_flat)
     
         # Extract probabilities corresponding to true targets
+        epsilon = 1e-8
         probabilities_at_targets = probabilities[range(logits_flat.size(0)), targets_flat]
+        probabilities_at_targets = torch.clamp(probabilities_at_targets, min=epsilon)
     
         # Compute max logit for each prediction
         max_logits = torch.max(logits_flat, dim=1).values
     
         # Combine the loss using probabilities and max logits
-        loss = -torch.log(probabilities_at_targets).mean() + max_logits.mean()
+        loss = -torch.log(probabilities_at_targets).mean()
     
         if not self.debug:
             return loss
         else:
             # Debugging mode: return additional information
-            intra_inter_logits = torch.where(targets_one_hot != 0, logits_flat, torch.Tensor([float('Inf')], device=device))
-            inter_intra_logits = torch.where(targets_one_hot != 0, torch.Tensor([float('Inf')], device=device), logits_flat)
+            intra_inter_logits = torch.where(
+                targets_one_hot != 0, logits_flat, torch.tensor([float('Inf')], device=device)
+            )
+            inter_intra_logits = torch.where(
+                targets_one_hot != 0, torch.tensor([float('Inf')], device=device), logits_flat
+            )
     
             intra_logits = intra_inter_logits[intra_inter_logits != float('Inf')].detach().cpu().numpy()
             inter_logits = inter_intra_logits[inter_intra_logits != float('Inf')].detach().cpu().numpy()
             return loss, self.model_classifier.distance_scale.item(), inter_logits, intra_logits
+
 
 
 
@@ -259,7 +266,7 @@ def train(args, model, enc=False):
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
 
-    criterion = EnhancedMaxLogitLoss(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, debug=True, gpu=None, entropic_scale=10.0)
+    criterion = EnhancedMaxLogitLoss(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, debug=False, gpu=None, entropic_scale=5.0)
     
     print("CRITERION: ", type(criterion))
 
