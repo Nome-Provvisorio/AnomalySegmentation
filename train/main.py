@@ -149,6 +149,7 @@ class EnhancedMaxLogitLoss(nn.Module):
     
         # Extract probabilities corresponding to true targets
         epsilon = 1e-8
+        probabilities_at_targets = probabilities[range(logits_flat.size(0)), targets_flat]
         probabilities_at_targets = torch.clamp(probabilities_at_targets, min=epsilon)
     
         # Compute max logit for each prediction
