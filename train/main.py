@@ -160,12 +160,17 @@ class EnhancedMaxLogitLoss(nn.Module):
             return loss
         else:
             # Debugging mode: return additional information
-            intra_inter_logits = torch.where(targets_one_hot != 0, logits_flat, torch.Tensor([float('Inf')], device=device))
-            inter_intra_logits = torch.where(targets_one_hot != 0, torch.Tensor([float('Inf')], device=device), logits_flat)
+            intra_inter_logits = torch.where(
+                targets_one_hot != 0, logits_flat, torch.tensor([float('Inf')], device=device)
+            )
+            inter_intra_logits = torch.where(
+                targets_one_hot != 0, torch.tensor([float('Inf')], device=device), logits_flat
+            )
     
             intra_logits = intra_inter_logits[intra_inter_logits != float('Inf')].detach().cpu().numpy()
             inter_logits = inter_intra_logits[inter_intra_logits != float('Inf')].detach().cpu().numpy()
             return loss, self.model_classifier.distance_scale.item(), inter_logits, intra_logits
+
 
 
 
