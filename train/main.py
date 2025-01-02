@@ -148,13 +148,14 @@ class EnhancedMaxLogitLoss(nn.Module):
         probabilities = nn.Softmax(dim=1)(self.entropic_scale * logits_flat)
     
         # Extract probabilities corresponding to true targets
-        probabilities_at_targets = probabilities[range(logits_flat.size(0)), targets_flat]
+        epsilon = 1e-8
+        probabilities_at_targets = torch.clamp(probabilities_at_targets, min=epsilon)
     
         # Compute max logit for each prediction
         max_logits = torch.max(logits_flat, dim=1).values
     
         # Combine the loss using probabilities and max logits
-        loss = -torch.log(probabilities_at_targets).mean() + max_logits.mean()
+        loss = -torch.log(probabilities_at_targets).mean()
     
         if not self.debug:
             return loss
@@ -264,7 +265,7 @@ def train(args, model, enc=False):
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
 
-    criterion = EnhancedMaxLogitLoss(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, debug=False, gpu=None, entropic_scale=10.0)
+    criterion = EnhancedMaxLogitLoss(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, debug=False, gpu=None, entropic_scale=5.0)
     
     print("CRITERION: ", type(criterion))
 
