@@ -124,21 +124,35 @@ class EnhancedMaxLogitLoss(nn.Module):
         """Preprocess inputs and targets before calculating the loss."""
         return inputs, targets
 
-    def forward(self, logits, targets):
+   def forward(self, logits, targets):
+        """
+        Compute the Enhanced Max Logit Loss.
+    
+        Args:
+            logits (Tensor): Predicted logits of shape (batch_size, num_classes, height, width).
+            targets (Tensor): Ground truth labels of shape (batch_size, height, width).
+    
+        Returns:
+            loss (Tensor): The computed loss.
+        """
+        # Flatten logits and targets to remove spatial dimensions
+        batch_size, num_classes, height, width = logits.size()
+        logits_flat = logits.permute(0, 2, 3, 1).reshape(-1, num_classes)
+        targets_flat = targets.view(-1)
+    
         # Convert targets to one-hot representation
-        num_classes = logits.size(1)
-        device = logits.device  # Ensure all tensors are on the same device
-        targets_one_hot = torch.eye(num_classes, device=device)[targets]
-        
+        device = logits.device  # Ensure tensors are on the same device
+        targets_one_hot = torch.eye(num_classes, device=device)[targets_flat]
+    
         # Calculate softmax probabilities with entropic scaling
-        probabilities = nn.Softmax(dim=1)(self.entropic_scale * logits)
-        
+        probabilities = nn.Softmax(dim=1)(self.entropic_scale * logits_flat)
+    
         # Extract probabilities corresponding to true targets
-        probabilities_at_targets = probabilities[range(logits.size(0)), targets]
-        
+        probabilities_at_targets = probabilities[range(logits_flat.size(0)), targets_flat]
+    
         # Compute max logit for each prediction
-        max_logits = torch.max(logits, dim=1).values
-        
+        max_logits = torch.max(logits_flat, dim=1).values
+    
         # Combine the loss using probabilities and max logits
         loss = -torch.log(probabilities_at_targets).mean() + max_logits.mean()
     
@@ -146,12 +160,13 @@ class EnhancedMaxLogitLoss(nn.Module):
             return loss
         else:
             # Debugging mode: return additional information
-            intra_inter_logits = torch.where(targets_one_hot != 0, logits, torch.Tensor([float('Inf')], device=device))
-            inter_intra_logits = torch.where(targets_one_hot != 0, torch.Tensor([float('Inf')], device=device), logits)
-            
+            intra_inter_logits = torch.where(targets_one_hot != 0, logits_flat, torch.Tensor([float('Inf')], device=device))
+            inter_intra_logits = torch.where(targets_one_hot != 0, torch.Tensor([float('Inf')], device=device), logits_flat)
+    
             intra_logits = intra_inter_logits[intra_inter_logits != float('Inf')].detach().cpu().numpy()
             inter_logits = inter_intra_logits[inter_intra_logits != float('Inf')].detach().cpu().numpy()
             return loss, self.model_classifier.distance_scale.item(), inter_logits, intra_logits
+
 
 
 
