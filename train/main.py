@@ -463,14 +463,20 @@ def train(args, model, enc=False):
             myfile.write("\n%d\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.8f" % (
             epoch, average_epoch_loss_train, average_epoch_loss_val, iouTrain, iouVal, usedLr))
 
-    # Visualizzazione dell'andamento della loss
     plt.plot(range(1, args.num_epochs + 1), losses, label='Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Andamento della Loss durante il Training')
     plt.legend()
-    plt.savefig('loss_plot.png')
+    output_path = 'loss_plot.png'
+    plt.savefig(output_path)
     plt.show()
+
+    # Controllo se il file è stato salvato
+    if os.path.exists(output_path):
+        print(f"Il grafico è stato salvato con successo in {output_path}.")
+    else:
+        print("Errore: Il grafico non è stato salvato.")
 
     return (model)  # return model (convenience for encoder-decoder training)
 
