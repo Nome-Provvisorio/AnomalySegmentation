@@ -124,7 +124,7 @@ class EnhancedMaxLogitLoss(nn.Module):
         """Preprocess inputs and targets before calculating the loss."""
         return inputs, targets
 
-   def forward(self, logits, targets):
+    def forward(self, logits, targets):
         """
         Compute the Enhanced Max Logit Loss.
     
