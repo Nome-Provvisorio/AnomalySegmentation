@@ -264,7 +264,7 @@ def train(args, model, enc=False):
     #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
 
-    criterion = EnhancedMaxLogitLoss(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, debug=True, gpu=None, entropic_scale=10.0)
+    criterion = EnhancedMaxLogitLoss(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, debug=False, gpu=None, entropic_scale=10.0)
     
     print("CRITERION: ", type(criterion))
 
