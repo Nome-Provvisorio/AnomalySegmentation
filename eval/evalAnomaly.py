@@ -157,7 +157,7 @@ def main():
 
     ood_gts = np.array(ood_gts_list)
     predicted_ood_maps = np.array(anomaly_score_list)
-    print((ood_gts == 1))
+
     ood_mask = (ood_gts == 1)
     ind_mask = (ood_gts == 0)
 

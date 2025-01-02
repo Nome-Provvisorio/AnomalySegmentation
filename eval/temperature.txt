@@ -24,3 +24,4 @@ Temperature: 10.0, Mean IoU: 72.20%
 Temperature: 700.0, Mean IoU: 72.20%
 Temperature: 700.0, Mean IoU: 72.20%
 Temperature: 1.1, Mean IoU: 72.20%
+Temperature: 1.1, Mean IoU: 67.33%
