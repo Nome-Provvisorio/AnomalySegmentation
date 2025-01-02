@@ -13,6 +13,7 @@ import math
 from PIL import Image, ImageOps
 from argparse import ArgumentParser
 
+from matplotlib import pyplot as plt
 from torch.optim import SGD, Adam, lr_scheduler
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
@@ -269,7 +270,8 @@ def train(args, model, enc=False):
 
     if args.visualize and args.steps_plot > 0:
         board = Dashboard(args.port)
-
+    # Lista per salvare l'andamento della loss
+    losses = []
     for epoch in range(start_epoch, args.num_epochs + 1):
         print("----- TRAINING - EPOCH", epoch, "-----")
 
@@ -310,6 +312,9 @@ def train(args, model, enc=False):
             optimizer.zero_grad()
 
             loss = criterion(outputs, targets[:, 0])
+
+            # Salva la loss corrente
+            losses.append(loss.item())
 
             loss.backward()
             optimizer.step()
@@ -457,6 +462,15 @@ def train(args, model, enc=False):
         with open(automated_log_path, "a") as myfile:
             myfile.write("\n%d\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.8f" % (
             epoch, average_epoch_loss_train, average_epoch_loss_val, iouTrain, iouVal, usedLr))
+
+    # Visualizzazione dell'andamento della loss
+    plt.plot(range(1, args.num_epochs + 1), losses, label='Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Andamento della Loss durante il Training')
+    plt.legend()
+    plt.savefig('loss_plot.png')
+    plt.show()
 
     return (model)  # return model (convenience for encoder-decoder training)
 
