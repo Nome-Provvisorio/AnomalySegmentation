@@ -462,7 +462,8 @@ def train(args, model, enc=False):
         with open(automated_log_path, "a") as myfile:
             myfile.write("\n%d\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.8f" % (
             epoch, average_epoch_loss_train, average_epoch_loss_val, iouTrain, iouVal, usedLr))
-
+    print("lunghezza loss ",len(losses))
+    print("lunghezza epoch ",args.num_epochs + 1)
     plt.plot(range(1, args.num_epochs + 1), losses, label='Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
