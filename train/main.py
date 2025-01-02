@@ -118,9 +118,6 @@ class MaxEntropyLoss(nn.Module):
         return entropy_loss.mean()
 
 
-
-
-
 def train(args, model, enc=False):
     best_acc = 0
 
@@ -185,10 +182,9 @@ def train(args, model, enc=False):
         weight = weight.cuda()
         
     ### CHANGE THE LOSS FUNCTION HERE 
-    
-    #criterion = CrossEntropyLoss2d(weight)
-    # criterion = MaxLogitLoss()
-    criterion = MaxEntropyLoss(weight)
+    criterion = CrossEntropyLoss2d(weight)
+    #criterion = MaxLogitLoss()
+    #criterion = MaxEntropyLoss(weight)
     #criterion = NLLLoss2d(weight)
     
     print(type(criterion))

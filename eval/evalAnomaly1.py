@@ -6,11 +6,13 @@ import torch
 import random
 from PIL import Image
 import numpy as np
-from erfnet import ERFNet
 import os.path as osp
 from argparse import ArgumentParser
 from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barcode
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
+from erfnet import ERFNet
+from enet import ENet
+from bisenetv2 import BiSeNetV2
 
 seed = 42
 
@@ -56,11 +58,12 @@ def main():
     print ("Loading model: " + modelpath)
     print ("Loading weights: " + weightspath)
 
-    model = ERFNet(NUM_CLASSES)
-
+    #model = ERFNet(NUM_CLASSES)
+    #model = ENet(NUM_CLASSES)
+    model = BiSeNetV2(NUM_CLASSES)
+    '''
     if (not args.cpu):
         model = torch.nn.DataParallel(model).cuda()
-
     def load_my_state_dict(model, state_dict):  #custom function to load model when not all dict elements
         own_state = model.state_dict()
         for name, param in state_dict.items():
@@ -73,20 +76,33 @@ def main():
             else:
                 own_state[name].copy_(param)
         return model
-
     model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
-    print ("Model and weights LOADED successfully")
+    '''
+    if (not args.cpu):
+        model.cuda()
+    model.load_state_dict(torch.load(weightspath, map_location=lambda storage, loc: storage))
+
     model.eval()
+    print ("Model and weights LOADED successfully")
+
+    VOID_CLASS_INDEX = 19
     
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         print(path)
-        images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
+        images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float().cuda()
         images = images.permute(0,3,1,2)
         with torch.no_grad():
-            result = model(images)
-        
+            result = model(images)[0]
+
+        # Calcolo delle probabilità softmax
+        probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()  # Shape: [num_classes, H, W]
+        # Seleziona solo le probabilità della classe Void
+        void_probabilities = probabilities[VOID_CLASS_INDEX]  # Shape: [H, W]
+        # Calcola il punteggio di anomalia MSP
+        anomaly_result = 1.0 - void_probabilities  # Anomalia come 1 - P(Void)
+
         ## QUESTO è MSP
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)   
+        #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         ## QUESTO è MAXENTROPY
         #probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
@@ -95,7 +111,7 @@ def main():
 
         #QUESTO è MAXLOGIT
         # Calcola il logit massimo per ogni pixel (prima di softmax)
-        #anomaly_result = ...
+        #anomaly_result = -np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         pathGT = path.replace("images", "labels_masks")   
         pathGT = osp.splitext(pathGT)[0] + ".png"
@@ -162,3 +178,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+#python evalAnomaly1.py --input '../Validation_Dataset/RoadAnomaly21/images/*.png' --loadModel 'bisenetv2.py' --loadWeights '../trained_models/bisenet_cityscapes.pth'

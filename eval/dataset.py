@@ -82,11 +82,9 @@ class cityscapes(Dataset):
         filename = self.filenames[index]
         filenameGt = self.filenamesGt[index]
 
-        #print(filename)
-
-        with open(image_path_city(self.images_root, filename), 'rb') as f:
+        with open(image_path_city("", filename), 'rb') as f:
             image = load_image(f).convert('RGB')
-        with open(image_path_city(self.labels_root, filenameGt), 'rb') as f:
+        with open(image_path_city("", filenameGt), 'rb') as f:
             label = load_image(f).convert('P')
 
         if self.input_transform is not None:
