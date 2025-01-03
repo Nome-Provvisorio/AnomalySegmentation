@@ -521,6 +521,13 @@ def save_checkpoint(state, is_best, filenameCheckpoint, filenameBest):
         print ("Saving model as best")
         torch.save(state, filenameBest)
 
+def load_pretrained_encoder(pretrained_path, model):
+    checkpoint = torch.load(pretrained_path)
+    if 'state_dict' in checkpoint:  # File con checkpoint
+        model.load_state_dict(checkpoint['state_dict'])
+    else:  # File con solo state_dict
+        model.load_state_dict(checkpoint)
+
 
 def main(args):
     savedir = f'../save/{args.savedir}'
@@ -603,13 +610,11 @@ def main(args):
     print("========== DECODER TRAINING ===========")
     if (not args.state):
         if args.pretrainedEncoder:
-            print("Loading encoder pretrained in imagenet")
             from erfnet_imagenet import ERFNet as ERFNet_imagenet
-            pretrainedEnc = torch.nn.DataParallel(ERFNet_imagenet(1000))
-            pretrainedEnc.load_state_dict(torch.load(args.pretrainedEncoder)['state_dict'])
-            pretrainedEnc = next(pretrainedEnc.children()).features.encoder
-            if (not args.cuda):
-                pretrainedEnc = pretrainedEnc.cpu()     #because loaded encoder is probably saved in cuda
+            pretrainedEnc = load_pretrained_encoder(args.pretrainedEncoder, ERFNet_imagenet, args.cuda)
+        else:
+            pretrainedEnc = next(model.children()).encoder
+       
         else:
             pretrainedEnc = next(model.children()).encoder
         model = model_file.Net(NUM_CLASSES, encoder=pretrainedEnc)  #Add decoder to encoder
