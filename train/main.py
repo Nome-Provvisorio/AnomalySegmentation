@@ -532,11 +532,7 @@ def load_pretrained_encoder(pretrained_path, encoder_class, cuda=True):
         state_dict = checkpoint['state_dict']
     else:
         state_dict = checkpoint
-
-    # Stampa le chiavi per verificare
-    print("Keys in checkpoint:")
-    print(state_dict.keys())
-
+    
     # Rimuove o aggiusta le chiavi come necessario
     new_state_dict = {}
     for key, value in state_dict.items():
