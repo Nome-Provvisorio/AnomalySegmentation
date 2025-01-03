@@ -151,6 +151,75 @@ class LogitNormalizationLoss(torch.nn.Module):
         # Compute cross-entropy loss with normalized logits and weights
         return F.nll_loss(normalized_logits, targets, weight=self.weight)
 
+class EnhancedMaxLogitLoss(nn.Module):
+    """Enhanced Max Logit Loss with entropic scaling and debug functionality."""
+    def __init__(self, model_classifier, debug=False, gpu=None, entropic_scale=10.0):
+        """
+        Args:
+            model_classifier: The classifier model (used for debugging distance scale).
+            debug (bool): Whether to enable debugging mode.
+            gpu (int or None): GPU device index (if using GPU).
+            entropic_scale (float): Scale factor for logits in softmax.
+        """
+        super(EnhancedMaxLogitLoss, self).__init__()
+        self.model_classifier = model_classifier
+        self.entropic_scale = entropic_scale
+        self.debug = debug
+        self.gpu = gpu
+
+    def preprocess(self, inputs, targets):
+        """Preprocess inputs and targets before calculating the loss."""
+        return inputs, targets
+
+    def forward(self, logits, targets):
+        """
+        Compute the Enhanced Max Logit Loss.
+    
+        Args:
+            logits (Tensor): Predicted logits of shape (batch_size, num_classes, height, width).
+            targets (Tensor): Ground truth labels of shape (batch_size, height, width).
+    
+        Returns:
+            loss (Tensor): The computed loss.
+        """
+        # Flatten logits and targets to remove spatial dimensions
+        batch_size, num_classes, height, width = logits.size()
+        logits_flat = logits.permute(0, 2, 3, 1).reshape(-1, num_classes)
+        targets_flat = targets.view(-1)
+    
+        # Convert targets to one-hot representation
+        device = logits.device  # Ensure tensors are on the same device
+        targets_one_hot = torch.eye(num_classes, device=device)[targets_flat]
+    
+        # Calculate softmax probabilities with entropic scaling
+        probabilities = nn.Softmax(dim=1)(self.entropic_scale * logits_flat)
+    
+        # Extract probabilities corresponding to true targets
+        epsilon = 1e-8
+        probabilities_at_targets = probabilities[range(logits_flat.size(0)), targets_flat]
+        probabilities_at_targets = torch.clamp(probabilities_at_targets, min=epsilon)
+    
+        # Compute max logit for each prediction
+        max_logits = torch.max(logits_flat, dim=1).values
+    
+        # Combine the loss using probabilities and max logits
+        loss = -torch.log(probabilities_at_targets).mean()
+    
+        if not self.debug:
+            return loss
+        else:
+            # Debugging mode: return additional information
+            intra_inter_logits = torch.where(
+                targets_one_hot != 0, logits_flat, torch.tensor([float('Inf')], device=device)
+            )
+            inter_intra_logits = torch.where(
+                targets_one_hot != 0, torch.tensor([float('Inf')], device=device), logits_flat
+            )
+    
+            intra_logits = intra_inter_logits[intra_inter_logits != float('Inf')].detach().cpu().numpy()
+            inter_logits = inter_intra_logits[inter_intra_logits != float('Inf')].detach().cpu().numpy()
+            return loss, self.model_classifier.distance_scale.item(), inter_logits, intra_logits
+
 
 def train(args, model, enc=False):
     best_acc = 0
@@ -217,13 +286,13 @@ def train(args, model, enc=False):
 
     ### CHANGE THE LOSS FUNCTION HERE 
 
-    criterion = LogitNormalizationLoss(weight)
+    # criterion = LogitNormalizationLoss(weight)
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
     # criterion = MaxEntropyLoss()
     # criterion = BCEWithLogitsLoss(weight)
     # criterion = CombinedLoss(weight=weight)
-
+    criterion = EnhancedMaxLogitLoss(model_classifier=model.module.classifier if isinstance(model, torch.nn.DataParallel) else model.classifier, debug=False, gpu=None, entropic_scale=5.0)
     print(type(criterion))
 
     savedir = f'../save/{args.savedir}'
