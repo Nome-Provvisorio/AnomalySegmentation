@@ -350,6 +350,8 @@ def train(args, model, enc=False):
             inputs = Variable(images)
             targets = Variable(labels)
             outputs = model(inputs, only_encode=enc)
+            if isinstance(outputs, tuple):  # Se il modello restituisce una tupla
+                outputs = outputs[0]  # Estrai il primo elemento (o quello corretto, in base alla struttura)
             inputs = inputs.to(device)
             targets = targets.to(device)
             #outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
