@@ -378,6 +378,7 @@ def train(args, model, enc=False):
             outputs = model(inputs, only_encode=enc)
 
             loss = criterion(outputs, targets[:, 0])
+            losses.append(loss.item())
             epoch_loss_val.append(loss.item())
             time_val.append(time.time() - start_time)
 
