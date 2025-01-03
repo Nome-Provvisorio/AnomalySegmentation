@@ -521,12 +521,19 @@ def save_checkpoint(state, is_best, filenameCheckpoint, filenameBest):
         print ("Saving model as best")
         torch.save(state, filenameBest)
 
-def load_pretrained_encoder(pretrained_path, model):
+def load_pretrained_encoder(pretrained_path, encoder_class, cuda=True):
+    print("Loading encoder pretrained from", pretrained_path)
+    encoder = torch.nn.DataParallel(encoder_class(1000))
     checkpoint = torch.load(pretrained_path)
-    if 'state_dict' in checkpoint:  # File con checkpoint
-        model.load_state_dict(checkpoint['state_dict'])
-    else:  # File con solo state_dict
-        model.load_state_dict(checkpoint)
+    if 'state_dict' in checkpoint:
+        encoder.load_state_dict(checkpoint['state_dict'])
+    else:
+        encoder.load_state_dict(checkpoint)
+    encoder = next(encoder.children()).features.encoder
+    if not cuda:
+        encoder = encoder.cpu()
+    return encoder
+
 
 
 def main(args):
