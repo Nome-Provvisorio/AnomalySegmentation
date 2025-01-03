@@ -153,6 +153,7 @@ class LogitNormalizationLoss(torch.nn.Module):
 
 
 def train(args, model, enc=False):
+    global epoch_losses
     best_acc = 0
 
     # TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
@@ -313,9 +314,6 @@ def train(args, model, enc=False):
 
             loss = criterion(outputs, targets[:, 0])
 
-            # Salva la loss corrente
-            losses.append(loss.item())
-
             loss.backward()
             optimizer.step()
 
@@ -351,7 +349,7 @@ def train(args, model, enc=False):
                       "// Avg time/img: %.4f s" % (sum(time_train) / len(time_train) / args.batch_size))
 
         average_epoch_loss_train = sum(epoch_loss) / len(epoch_loss)
-
+        epoch_losses.append(average_epoch_loss_train)
         iouTrain = 0
         if (doIouTrain):
             iouTrain, iou_classes = iouEvalTrain.getIoU()
@@ -462,23 +460,15 @@ def train(args, model, enc=False):
         with open(automated_log_path, "a") as myfile:
             myfile.write("\n%d\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.8f" % (
             epoch, average_epoch_loss_train, average_epoch_loss_val, iouTrain, iouVal, usedLr))
-    print("lunghezza loss ",len(losses))
-    print("lunghezza epoch ",args.num_epochs + 1)
-    plt.plot(range(1, args.num_epochs + 1), losses, label='Loss')
+
+    epochs = list(range(1, args.num_epochs + 1))  # Epoche da 1 a N
+    plt.plot(epochs, epoch_losses, label='Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.title('Andamento della Loss durante il Training')
+    plt.title('Andamento della Loss')
     plt.legend()
-    output_path = 'loss_plot.png'
-    plt.savefig(output_path)
+    plt.savefig('Loss.png')
     plt.show()
-
-    # Controllo se il file è stato salvato
-    if os.path.exists(output_path):
-        print(f"Il grafico è stato salvato con successo in {output_path}.")
-    else:
-        print("Errore: Il grafico non è stato salvato.")
-
     return (model)  # return model (convenience for encoder-decoder training)
 
 
