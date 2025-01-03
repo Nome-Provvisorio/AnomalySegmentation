@@ -614,9 +614,6 @@ def main(args):
             pretrainedEnc = load_pretrained_encoder(args.pretrainedEncoder, ERFNet_imagenet, args.cuda)
         else:
             pretrainedEnc = next(model.children()).encoder
-       
-        else:
-            pretrainedEnc = next(model.children()).encoder
         model = model_file.Net(NUM_CLASSES, encoder=pretrainedEnc)  #Add decoder to encoder
         if args.cuda:
             model = torch.nn.DataParallel(model).cuda()
