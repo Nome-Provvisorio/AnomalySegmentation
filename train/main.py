@@ -526,13 +526,22 @@ def load_pretrained_encoder(pretrained_path, encoder_class, cuda=True):
     encoder = torch.nn.DataParallel(encoder_class(1000))
     checkpoint = torch.load(pretrained_path)
     if 'state_dict' in checkpoint:
-        encoder.load_state_dict(checkpoint['state_dict'])
+        state_dict = checkpoint['state_dict']
     else:
-        encoder.load_state_dict(checkpoint)
+        state_dict = checkpoint
+
+    # Rimuove il prefisso 'module.' se esiste
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        new_key = key.replace("module.", "")  # Rimuove 'module.'
+        new_state_dict[new_key] = value
+
+    encoder.load_state_dict(new_state_dict)
     encoder = next(encoder.children()).features.encoder
     if not cuda:
         encoder = encoder.cpu()
     return encoder
+
 
 
 
