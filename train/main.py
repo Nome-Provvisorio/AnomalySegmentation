@@ -468,7 +468,10 @@ def train(args, model, enc=False):
     plt.ylabel('Loss')
     plt.title('Andamento della Loss')
     plt.legend()
-    plt.savefig('Loss.png')
+    if enc:
+        plt.savefig('Encoder Loss.png')
+    else:
+        plt.savefig('Decoder Loss.png')
     plt.show()
     batch_indices = list(range(1, len(losses) + 1))  # Indici per ogni batch
     print("Batch losses: ",batch_indices)
@@ -477,7 +480,10 @@ def train(args, model, enc=False):
     plt.ylabel('Loss')
     plt.title('Andamento della Loss per Batch')
     plt.legend()
-    plt.savefig('BatchLoss.png')
+    if enc:
+        plt.savefig('Encoder BatchLoss.png')
+    else:
+        plt.savefig('Decoder BatchLoss.png')
     plt.show()
     return (model)  # return model (convenience for encoder-decoder training)
 
