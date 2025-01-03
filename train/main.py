@@ -460,7 +460,7 @@ def train(args, model, enc=False):
         with open(automated_log_path, "a") as myfile:
             myfile.write("\n%d\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.8f" % (
             epoch, average_epoch_loss_train, average_epoch_loss_val, iouTrain, iouVal, usedLr))
-
+    print("Epoch losses: ",epoch_losses)
     epochs = list(range(1, args.num_epochs + 1))  # Epoche da 1 a N
     plt.plot(epochs, epoch_losses, label='Loss')
     plt.xlabel('Epoch')
@@ -468,6 +468,15 @@ def train(args, model, enc=False):
     plt.title('Andamento della Loss')
     plt.legend()
     plt.savefig('Loss.png')
+    plt.show()
+    batch_indices = list(range(1, len(losses) + 1))  # Indici per ogni batch
+    print("Batch losses: ",batch_indices)
+    plt.plot(batch_indices, losses, label='Batch Loss')
+    plt.xlabel('Batch')
+    plt.ylabel('Loss')
+    plt.title('Andamento della Loss per Batch')
+    plt.legend()
+    plt.savefig('BatchLoss.png')
     plt.show()
     return (model)  # return model (convenience for encoder-decoder training)
 
