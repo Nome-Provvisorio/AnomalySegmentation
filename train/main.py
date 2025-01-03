@@ -425,7 +425,9 @@ def train(args, model, enc=False):
                 targets = labels
 
             outputs = model(inputs, only_encode=enc) 
-
+            if isinstance(outputs, tuple):  # Se il modello restituisce una tupla
+                outputs = outputs[0]
+                
             loss = criterion(outputs, targets[:, 0].long())
             #loss = criterion(outputs)
 
