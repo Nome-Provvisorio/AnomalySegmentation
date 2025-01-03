@@ -153,7 +153,7 @@ class LogitNormalizationLoss(torch.nn.Module):
 
 
 def train(args, model, enc=False):
-    global epoch_losses
+    epoch_losses=[]
     best_acc = 0
 
     # TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
