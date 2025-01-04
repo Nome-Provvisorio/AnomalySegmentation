@@ -13,6 +13,7 @@ import math
 from PIL import Image, ImageOps
 from argparse import ArgumentParser
 
+from matplotlib import pyplot as plt
 from torch.optim import SGD, Adam, lr_scheduler
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
@@ -198,7 +199,8 @@ class MaxEntropyLoss(nn.Module):
 
 def train(args, model, enc=False):
     best_acc = 0
-
+    epoch_losses=[]
+    losses=[]
     #TODO: calculate weights by processing dataset histogram (now its being set by hand from the torch values)
     #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
 
@@ -359,6 +361,7 @@ def train(args, model, enc=False):
             optimizer.zero_grad()
             loss = criterion(outputs, targets[:, 0].long())
             #loss = criterion(outputs)
+            losses.append(loss.item())
 
             loss.backward()
             optimizer.step()
@@ -396,6 +399,7 @@ def train(args, model, enc=False):
 
             
         average_epoch_loss_train = sum(epoch_loss) / len(epoch_loss)
+        epoch_losses.append(average_epoch_loss_train)
         
         iouTrain = 0
         if (doIouTrain):
@@ -427,7 +431,7 @@ def train(args, model, enc=False):
             loss = criterion(outputs, targets[:, 0].long())
             #loss = criterion(outputs)
 
-            
+
             epoch_loss_val.append(loss.item())
             time_val.append(time.time() - start_time)
 
@@ -512,7 +516,30 @@ def train(args, model, enc=False):
         #Epoch		Train-loss		Test-loss	Train-IoU	Test-IoU		learningRate
         with open(automated_log_path, "a") as myfile:
             myfile.write("\n%d\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.8f" % (epoch, average_epoch_loss_train, average_epoch_loss_val, iouTrain, iouVal, usedLr ))
-    
+        print("Epoch losses: ",epoch_losses)
+    epochs = list(range(1, args.num_epochs + 1))  # Epoche da 1 a N
+    plt.plot(epochs, epoch_losses, label='Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Andamento della Loss')
+    plt.legend()
+    if enc:
+        plt.savefig('Encoder Loss.png')
+    else:
+        plt.savefig('Decoder Loss.png')
+    plt.show()
+    batch_indices = list(range(1, len(losses) + 1))  # Indici per ogni batch
+    print("Batch losses: ",batch_indices)
+    plt.plot(batch_indices, losses, label='Batch Loss')
+    plt.xlabel('Batch')
+    plt.ylabel('Loss')
+    plt.title('Andamento della Loss per Batch')
+    plt.legend()
+    if enc:
+        plt.savefig('Encoder BatchLoss.png')
+    else:
+        plt.savefig('Decoder BatchLoss.png')
+    plt.show()
     return(model)   #return model (convenience for encoder-decoder training)
 
 def save_checkpoint(state, is_best, filenameCheckpoint, filenameBest):
