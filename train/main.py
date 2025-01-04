@@ -352,6 +352,8 @@ def train(args, model, enc=False):
             inputs = Variable(images)
             targets = Variable(labels)
             outputs = model(inputs, only_encode=enc)
+            if isinstance(outputs, tuple):  # Se il modello restituisce una tupla
+                outputs = outputs[0]  # Estrai il primo elemento (o quello corretto, in base alla struttura)
             inputs = inputs.to(device)
             targets = targets.to(device)
             #outputs = torch.nn.functional.log_softmax(outputs, dim=1)  # Calcola log-probabilities lungo la dimensione delle classi
@@ -427,7 +429,9 @@ def train(args, model, enc=False):
                 targets = labels
 
             outputs = model(inputs, only_encode=enc) 
-
+            if isinstance(outputs, tuple):  # Se il modello restituisce una tupla
+                outputs = outputs[0]
+                
             loss = criterion(outputs, targets[:, 0].long())
             #loss = criterion(outputs)
 
@@ -548,6 +552,34 @@ def save_checkpoint(state, is_best, filenameCheckpoint, filenameBest):
         print ("Saving model as best")
         torch.save(state, filenameBest)
 
+def load_pretrained_encoder(pretrained_path, encoder_class, cuda=True):
+    print("Loading encoder pretrained from", pretrained_path)
+    encoder = torch.nn.DataParallel(encoder_class(1000))
+    checkpoint = torch.load(pretrained_path)
+    
+    if 'state_dict' in checkpoint:
+        state_dict = checkpoint['state_dict']
+    else:
+        state_dict = checkpoint
+    
+    # Rimuove o aggiusta le chiavi come necessario
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        if key.startswith("module."):  # Rimuovi 'module.' se esiste
+            new_key = key.replace("module.", "")
+        else:
+            new_key = key
+        new_state_dict[new_key] = value
+
+    encoder.load_state_dict(new_state_dict, strict=False)  # Usa `strict=False` se alcune chiavi non combaciano
+    encoder = next(encoder.children()).features.encoder
+    if not cuda:
+        encoder = encoder.cpu()
+    return encoder
+
+
+
+
 
 def main(args):
     savedir = f'../save/{args.savedir}'
@@ -630,13 +662,8 @@ def main(args):
     print("========== DECODER TRAINING ===========")
     if (not args.state):
         if args.pretrainedEncoder:
-            print("Loading encoder pretrained in imagenet")
             from erfnet_imagenet import ERFNet as ERFNet_imagenet
-            pretrainedEnc = torch.nn.DataParallel(ERFNet_imagenet(1000))
-            pretrainedEnc.load_state_dict(torch.load(args.pretrainedEncoder)['state_dict'])
-            pretrainedEnc = next(pretrainedEnc.children()).features.encoder
-            if (not args.cuda):
-                pretrainedEnc = pretrainedEnc.cpu()     #because loaded encoder is probably saved in cuda
+            pretrainedEnc = load_pretrained_encoder(args.pretrainedEncoder, ERFNet_imagenet, args.cuda)
         else:
             pretrainedEnc = next(model.children()).encoder
         model = model_file.Net(NUM_CLASSES, encoder=pretrainedEnc)  #Add decoder to encoder
