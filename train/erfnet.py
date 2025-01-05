@@ -149,3 +149,10 @@ class Net(nn.Module):
         else:
             output = self.encoder(input)    #predict=False by default
             return self.decoder.forward(output)
+        
+    def get_embeddings(self, x):
+        # Passa x attraverso l'encoder per ottenere la mappa di caratteristiche
+        features = self.encoder(x)  # [batch_size, 128, H', W']
+        # Applica global average pooling per ottenere embedding di dimensione [batch_size, 128]
+        embeddings = F.adaptive_avg_pool2d(features, (1, 1)).squeeze(-1).squeeze(-1)  # [batch_size, 128]
+        return embeddings
