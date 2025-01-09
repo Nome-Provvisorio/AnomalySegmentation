@@ -119,9 +119,8 @@ class LogitNormalizationLoss(torch.nn.Module):
         # Compute cross-entropy loss with normalized logits and weights
         return F.nll_loss(normalized_logits, targets, weight=self.weight)
 
-
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2, alpha=None, weight=None, ignore_index=255):
+    def __init__(self, weight=None, gamma=2, alpha=None, ignore_index=255):
         super().__init__()
         self.gamma = gamma
         self.alpha = alpha
@@ -129,11 +128,10 @@ class FocalLoss(nn.Module):
         self.ignore_index = ignore_index
 
     def forward(self, outputs, targets):
-        # outputs: [B, C, H, W]
-        # targets: [B, H, W]
+        # outputs: [B, C, H, W], targets: [B, H, W]
         ce_loss = F.cross_entropy(
-            outputs,
-            targets,
+            outputs,  # [1, 20, 64, 128]
+            targets.long(),  # [1, 64, 128]
             weight=self.weight,
             ignore_index=self.ignore_index,
             reduction='none'
@@ -147,6 +145,7 @@ class FocalLoss(nn.Module):
             focal_loss = alpha * focal_loss
 
         return focal_loss.mean()
+
 
 def train(args, model, enc=False):
     epoch_losses=[]
