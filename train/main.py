@@ -223,7 +223,8 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     # criterion = MaxEntropyLoss()
     # criterion = BCEWithLogitsLoss(weight)
-    criterion = CombinedLoss(weight=weight)
+    # criterion = CombinedLossFocalAndLogit(weight=weight)
+    criterion = CombinedLossCrossAndLogit(weight=weight)
 
     print(type(criterion))
 
