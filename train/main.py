@@ -120,37 +120,44 @@ class LogitNormalizationLoss(torch.nn.Module):
         return F.nll_loss(normalized_logits, targets, weight=self.weight)
 
 class FocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2, weight=None, reduction='mean'):
+    def __init__(self, gamma=2, weights=None, reduction='mean'):
         """
-        Args:
-            alpha (float): Peso per la focal loss (default: 1).
-            gamma (float): Fattore di focalizzazione per gli esempi difficili (default: 2).
-            weight (Tensor): Pesi delle classi (opzionale, per bilanciare classi sbilanciate).
-            reduction (str): Specifica la riduzione da applicare alla loss ('mean', 'sum', 'none').
+        :param gamma: parametro di modulazione. Default: 2
+        :param weights: pesi per le classi. Può essere un tensor con dimensioni [num_classes].
+                        Se None, non verranno usati i pesi.
+        :param reduction: come aggregare i valori della loss, può essere 'mean', 'sum' o 'none'.
         """
         super(FocalLoss, self).__init__()
-        self.alpha = alpha
         self.gamma = gamma
-        self.weight = weight  # Tensor con pesi delle classi
+        self.weights = weights  # Salva i pesi per l'uso successivo
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        # Calcolo della cross-entropy loss con pesi
-        ce_loss = F.cross_entropy(inputs, targets, weight=self.weight, reduction='none')
+        """
+        :param inputs: probabilità previste (batch_size, num_classes)
+        :param targets: etichette target (batch_size)
+        """
+        # Calcolare la probabilità per la classe target
+        inputs = torch.clamp(inputs, min=1e-7, max=1-1e-7)  # Evita log(0)
+        p_t = inputs.gather(1, targets.unsqueeze(1))  # p_t è la probabilità per la classe target
 
-        # Probabilità predetta per la classe corretta
-        pt = torch.exp(-ce_loss)  # p_t
+        # Calcolare il termine (1 - p_t)^gamma
+        loss = - (1 - p_t) ** self.gamma * torch.log(p_t)
 
-        # Calcolo della Focal Loss
-        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+        if self.weights is not None:
+            # Moltiplicare la loss per i pesi delle classi se forniti
+            weights = self.weights.gather(0, targets)  # Ottieni i pesi per le classi nel batch
+            loss = weights * loss
 
-        # Applica la riduzione specificata
+        # Applicare il tipo di riduzione scelto
         if self.reduction == 'mean':
-            return focal_loss.mean()
+            return loss.mean()
         elif self.reduction == 'sum':
-            return focal_loss.sum()
+            return loss.sum()
+        elif self.reduction == 'none':
+            return loss
         else:
-            return focal_loss
+            raise ValueError(f"Invalid reduction mode: {self.reduction}")
 
 def train(args, model, enc=False):
     epoch_losses=[]
