@@ -131,20 +131,29 @@ class FocalLoss(nn.Module):
         print(f"Inputs shape: {inputs.shape}")
         print(f"Targets shape: {targets.shape}")
 
-        # Assicurati che outputs (inputs) abbiano la forma [batch_size, num_classes]
-        # e che targets abbia la forma [batch_size]
+        # Assicurati che `inputs` abbia la forma [batch_size, num_classes, height, width]
+        # e che `targets` abbia la forma [batch_size, height, width]
 
-        # Calcola la probabilità p_t
+        # Calcola la probabilità p_t per la classe target (con la forma corretta)
         inputs = torch.clamp(inputs, min=1e-7, max=1-1e-7)  # Evita log(0)
-        p_t = inputs.gather(1, targets.unsqueeze(1))  # p_t è la probabilità per la classe target
 
-        # Calcolare la Focal Loss
-        loss = - (1 - p_t) ** self.gamma * torch.log(p_t)
+        # Preleva la probabilità per la classe target in ogni pixel
+        p_t = inputs.gather(1, targets.unsqueeze(1))  # p_t ha la forma [batch_size, 1, height, width]
+
+        # Elimina la dimensione in più
+        p_t = p_t.squeeze(1)  # Ora p_t ha la forma [batch_size, height, width]
+
+        # Stampa la forma di p_t
+        print(f"p_t shape after squeeze: {p_t.shape}")
 
         # Se ci sono pesi, applicali alla loss
         if self.weights is not None:
-            weights = self.weights.gather(0, targets)
-            loss = weights * loss
+            # Assicurati che `weights` abbia la forma corretta [num_classes]
+            weights = self.weights[targets]  # I pesi per la classe target
+            weights = weights.unsqueeze(1).unsqueeze(2)  # Estendi i pesi alla forma [batch_size, 1, height, width]
+            loss = - (1 - p_t) ** self.gamma * torch.log(p_t) * weights
+        else:
+            loss = - (1 - p_t) ** self.gamma * torch.log(p_t)
 
         # Ridurre la loss in base al tipo di 'reduction'
         if self.reduction == 'mean':
@@ -227,8 +236,8 @@ def train(args, model, enc=False):
     # criterion = MaxLogitLoss()
     # criterion = MaxEntropyLoss()
     # criterion = BCEWithLogitsLoss(weight)
-    criterion = CombinedLossFocalAndLogit(weight=weight)
-    # criterion = CombinedLossCrossAndLogit(weight=weight)
+    # criterion = CombinedLossFocalAndLogit(weight=weight)
+    criterion = CombinedLossCrossAndLogit(weight=weight)
 
     print(type(criterion))
 
@@ -608,7 +617,7 @@ if __name__ == '__main__':
     parser.add_argument('--state')
 
     parser.add_argument('--port', type=int, default=8097)
-    parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
+    parser.add_argument('--datadir')
     parser.add_argument('--height', type=int, default=512)
     parser.add_argument('--num-epochs', type=int, default=150)
     parser.add_argument('--num-workers', type=int, default=4)
