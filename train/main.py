@@ -119,51 +119,34 @@ class LogitNormalizationLoss(torch.nn.Module):
         # Compute cross-entropy loss with normalized logits and weights
         return F.nll_loss(normalized_logits, targets, weight=self.weight)
 
+
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2, weights=None, reduction='mean'):
-        super(FocalLoss, self).__init__()
+    def __init__(self, gamma=2, alpha=None, weight=None, ignore_index=255):
+        super().__init__()
         self.gamma = gamma
-        self.weights = weights  # Pesi per le classi
-        self.reduction = reduction
+        self.alpha = alpha
+        self.weight = weight
+        self.ignore_index = ignore_index
 
-    def forward(self, inputs, targets):
-        # Verifica le dimensioni
-        print(f"Inputs shape: {inputs.shape}")
-        print(f"Targets shape: {targets.shape}")
+    def forward(self, outputs, targets):
+        # outputs: [B, C, H, W]
+        # targets: [B, H, W]
+        ce_loss = F.cross_entropy(
+            outputs,
+            targets,
+            weight=self.weight,
+            ignore_index=self.ignore_index,
+            reduction='none'
+        )
 
-        # Assicurati che `inputs` abbia la forma [batch_size, num_classes, height, width]
-        # e che `targets` abbia la forma [batch_size, height, width]
+        pt = torch.exp(-ce_loss)
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
 
-        # Calcola la probabilità p_t per la classe target (con la forma corretta)
-        inputs = torch.clamp(inputs, min=1e-7, max=1-1e-7)  # Evita log(0)
+        if self.alpha is not None:
+            alpha = self.alpha[targets]
+            focal_loss = alpha * focal_loss
 
-        # Preleva la probabilità per la classe target in ogni pixel
-        p_t = inputs.gather(1, targets.unsqueeze(1))  # p_t ha la forma [batch_size, 1, height, width]
-
-        # Elimina la dimensione in più
-        p_t = p_t.squeeze(1)  # Ora p_t ha la forma [batch_size, height, width]
-
-        # Stampa la forma di p_t
-        print(f"p_t shape after squeeze: {p_t.shape}")
-
-        # Se ci sono pesi, applicali alla loss
-        if self.weights is not None:
-            # Assicurati che `weights` abbia la forma corretta [num_classes]
-            weights = self.weights[targets]  # I pesi per la classe target
-            weights = weights.unsqueeze(1).unsqueeze(2)  # Estendi i pesi alla forma [batch_size, 1, height, width]
-            loss = - (1 - p_t) ** self.gamma * torch.log(p_t) * weights
-        else:
-            loss = - (1 - p_t) ** self.gamma * torch.log(p_t)
-
-        # Ridurre la loss in base al tipo di 'reduction'
-        if self.reduction == 'mean':
-            return loss.mean()
-        elif self.reduction == 'sum':
-            return loss.sum()
-        elif self.reduction == 'none':
-            return loss
-        else:
-            raise ValueError(f"Invalid reduction mode: {self.reduction}")
+        return focal_loss.mean()
 
 def train(args, model, enc=False):
     epoch_losses=[]
