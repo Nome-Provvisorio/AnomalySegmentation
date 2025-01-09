@@ -104,7 +104,7 @@ class CombinedLossFocalAndLogit(torch.nn.Module):
         self.logit__normalization= LogitNormalizationLoss(weight)
 
     def forward(self, outputs, targets):
-        fo_loss = self.cross_entropy(outputs, targets)
+        fo_loss = self.focal_loss(outputs, targets)
         ln_loss = self.logit__normalization(outputs, targets)
         return self.alpha * fo_loss + (1 - self.alpha) * ln_loss
 
