@@ -84,61 +84,29 @@ class CrossEntropyLoss2d(torch.nn.Module):
     def forward(self, outputs, targets):
         return self.loss(outputs, targets)
 
-
-class BCEWithLogitsLoss(torch.nn.Module):
-    def __init__(self, weight=None):
-        super().__init__()
-        self.loss = torch.nn.BCEWithLogitsLoss(weight)
-
-    def forward(self, outputs, targets):
-        return self.loss(outputs, targets)
-
-
-class MaxLogitLoss(nn.Module):
-    def __init__(self, weight=None):
-        super().__init__()
-        self.weight = weight
-
-    def forward(self, outputs, targets):
-        # Calcolo della logit (usiamo direttamente gli outputs grezzi)
-        logits = outputs
-
-        # Calcolo della Cross-Entropy Loss utilizzando i logit
-        log_probs = F.log_softmax(logits, dim=1)
-        max_logit_loss = F.nll_loss(log_probs, targets, weight=self.weight)
-
-        return max_logit_loss.mean()
-
-
-class CombinedLoss(torch.nn.Module):
-    def __init__(self, alpha=0.5, margin=1.0, weight=None):
+class CombinedLossCrossAndLogit(torch.nn.Module):
+    def __init__(self, alpha=0.5, weight=None):
         super().__init__()
         self.alpha = alpha
         self.cross_entropy = torch.nn.CrossEntropyLoss(weight)
-        self.max_logit_loss = MaxLogitLoss(margin)
+        self.logit__normalization= LogitNormalizationLoss(weight)
 
     def forward(self, outputs, targets):
         ce_loss = self.cross_entropy(outputs, targets)
-        ml_loss = self.max_logit_loss(outputs, targets)
-        return self.alpha * ce_loss + (1 - self.alpha) * ml_loss
+        ln_loss = self.logit__normalization(outputs, targets)
+        return self.alpha * ce_loss + (1 - self.alpha) * ln_loss
 
-
-class MaxEntropyLoss(nn.Module):
-    def __init__(self, weight=None):
+class CombinedLossFocalAndLogit(torch.nn.Module):
+    def __init__(self, alpha=0.5, weight=None):
         super().__init__()
-        self.weight = weight
+        self.alpha = alpha
+        self.focal_loss = FocalLoss(weight)
+        self.logit__normalization= LogitNormalizationLoss(weight)
 
     def forward(self, outputs, targets):
-        # Calcolo dell'entropia incrociata standard
-        log_probs = F.log_softmax(outputs, dim=1)
-        entropy_loss = F.cross_entropy(outputs, targets, weight=self.weight)
-
-        # Applicazione dei pesi se forniti
-        if self.weight is not None:
-            entropy_loss = entropy_loss * self.weight
-
-        return entropy_loss.mean()
-
+        fo_loss = self.cross_entropy(outputs, targets)
+        ln_loss = self.logit__normalization(outputs, targets)
+        return self.alpha * fo_loss + (1 - self.alpha) * ln_loss
 
 class LogitNormalizationLoss(torch.nn.Module):
     def __init__(self, weight=None):
@@ -151,6 +119,38 @@ class LogitNormalizationLoss(torch.nn.Module):
         # Compute cross-entropy loss with normalized logits and weights
         return F.nll_loss(normalized_logits, targets, weight=self.weight)
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1, gamma=2, weight=None, reduction='mean'):
+        """
+        Args:
+            alpha (float): Peso per la focal loss (default: 1).
+            gamma (float): Fattore di focalizzazione per gli esempi difficili (default: 2).
+            weight (Tensor): Pesi delle classi (opzionale, per bilanciare classi sbilanciate).
+            reduction (str): Specifica la riduzione da applicare alla loss ('mean', 'sum', 'none').
+        """
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.weight = weight  # Tensor con pesi delle classi
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        # Calcolo della cross-entropy loss con pesi
+        ce_loss = F.cross_entropy(inputs, targets, weight=self.weight, reduction='none')
+
+        # Probabilità predetta per la classe corretta
+        pt = torch.exp(-ce_loss)  # p_t
+
+        # Calcolo della Focal Loss
+        focal_loss = self.alpha  (1 - pt) * self.gamma * ce_loss
+
+        # Applica la riduzione specificata
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
 
 def train(args, model, enc=False):
     epoch_losses=[]
@@ -218,12 +218,12 @@ def train(args, model, enc=False):
 
     ### CHANGE THE LOSS FUNCTION HERE 
 
-    criterion = LogitNormalizationLoss(weight)
+    # criterion = LogitNormalizationLoss(weight)
     # criterion = CrossEntropyLoss2d(weight)
     # criterion = MaxLogitLoss()
     # criterion = MaxEntropyLoss()
     # criterion = BCEWithLogitsLoss(weight)
-    # criterion = CombinedLoss(weight=weight)
+    criterion = CombinedLoss(weight=weight)
 
     print(type(criterion))
 
