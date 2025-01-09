@@ -142,7 +142,7 @@ class FocalLoss(nn.Module):
         pt = torch.exp(-ce_loss)  # p_t
 
         # Calcolo della Focal Loss
-        focal_loss = self.alpha  (1 - pt) * self.gamma * ce_loss
+        focal_loss = self.alpha  (1 - pt) ** self.gamma * ce_loss
 
         # Applica la riduzione specificata
         if self.reduction == 'mean':
