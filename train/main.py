@@ -121,35 +121,32 @@ class LogitNormalizationLoss(torch.nn.Module):
 
 class FocalLoss(nn.Module):
     def __init__(self, gamma=2, weights=None, reduction='mean'):
-        """
-        :param gamma: parametro di modulazione. Default: 2
-        :param weights: pesi per le classi. Può essere un tensor con dimensioni [num_classes].
-                        Se None, non verranno usati i pesi.
-        :param reduction: come aggregare i valori della loss, può essere 'mean', 'sum' o 'none'.
-        """
         super(FocalLoss, self).__init__()
         self.gamma = gamma
-        self.weights = weights  # Salva i pesi per l'uso successivo
+        self.weights = weights  # Pesi per le classi
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        """
-        :param inputs: probabilità previste (batch_size, num_classes)
-        :param targets: etichette target (batch_size)
-        """
-        # Calcolare la probabilità per la classe target
+        # Verifica le dimensioni
+        print(f"Inputs shape: {inputs.shape}")
+        print(f"Targets shape: {targets.shape}")
+
+        # Assicurati che outputs (inputs) abbiano la forma [batch_size, num_classes]
+        # e che targets abbia la forma [batch_size]
+
+        # Calcola la probabilità p_t
         inputs = torch.clamp(inputs, min=1e-7, max=1-1e-7)  # Evita log(0)
         p_t = inputs.gather(1, targets.unsqueeze(1))  # p_t è la probabilità per la classe target
 
-        # Calcolare il termine (1 - p_t)^gamma
+        # Calcolare la Focal Loss
         loss = - (1 - p_t) ** self.gamma * torch.log(p_t)
 
+        # Se ci sono pesi, applicali alla loss
         if self.weights is not None:
-            # Moltiplicare la loss per i pesi delle classi se forniti
-            weights = self.weights.gather(0, targets)  # Ottieni i pesi per le classi nel batch
+            weights = self.weights.gather(0, targets)
             loss = weights * loss
 
-        # Applicare il tipo di riduzione scelto
+        # Ridurre la loss in base al tipo di 'reduction'
         if self.reduction == 'mean':
             return loss.mean()
         elif self.reduction == 'sum':
