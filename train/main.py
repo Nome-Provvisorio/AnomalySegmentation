@@ -248,9 +248,9 @@ def train(args, model, enc=False):
     if args.resume:
         # Must load weights, optimizer, epoch and best value.
         if enc:
-            filenameCheckpoint = savedir + '/checkpoint_enc.pth.tar'
+            filenameCheckpoint = resumedir + '/checkpoint_enc.pth.tar'
         else:
-            filenameCheckpoint = savedir + '/checkpoint.pth.tar'
+            filenameCheckpoint = resumedir + '/checkpoint.pth.tar'
 
         assert os.path.exists(
             filenameCheckpoint), "Error: resume option was used but checkpoint was not found in folder"
@@ -608,6 +608,7 @@ if __name__ == '__main__':
     parser.add_argument('--steps-plot', type=int, default=50)
     parser.add_argument('--epochs-save', type=int, default=0)  # You can use this value to save model every X epochs
     parser.add_argument('--savedir', required=True)
+    parser.add_argument('--resumedir')
     parser.add_argument('--decoder', action='store_true')
     parser.add_argument('--pretrainedEncoder')  # , default="../trained_models/erfnet_encoder_pretrained.pth.tar")
     parser.add_argument('--visualize', action='store_true')
