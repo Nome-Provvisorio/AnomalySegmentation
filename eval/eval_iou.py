@@ -76,8 +76,8 @@ def main(args):
 
     loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset), num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
-    #iouEvalVal = iouEval(NUM_CLASSES)
-    iouEvalVal = iouEval(NUM_CLASSES, -1)
+    iouEvalVal = iouEval(NUM_CLASSES, 19)
+    #iouEvalVal = iouEval(NUM_CLASSES, -1)
 
     start = time.time()
 
@@ -128,7 +128,7 @@ def main(args):
     print(iou_classes_str[16], "train")
     print(iou_classes_str[17], "motorcycle")
     print(iou_classes_str[18], "bicycle")
-    print(iou_classes_str[19], "void")
+    #print(iou_classes_str[19], "void")
     print("=======================================")
     iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
     print ("MEAN IoU: ", iouStr, "%")
@@ -148,3 +148,6 @@ if __name__ == '__main__':
     parser.add_argument('--cpu', action='store_true')
 
     main(parser.parse_args())
+
+
+#python eval_iou.py --datadir ../datasets/ --subset val
