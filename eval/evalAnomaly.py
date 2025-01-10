@@ -114,8 +114,10 @@ def main():
             anomaly_result = entropy
 
         elif args.metric == 'maxlogit':
-            # Massimo logit
-            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+            # Maximum Logit - take negative of maximum logit value
+            # Higher negative values indicate higher anomaly scores
+            logits = result.squeeze(0).data.cpu().numpy()
+            anomaly_result = -np.max(logits, axis=0)
 
         pathGT = path.parent.parent / "labels_masks" / path.stem
         pathGT = pathGT.with_name(pathGT.stem + ".png")
@@ -139,6 +141,12 @@ def main():
         if "Streethazard" in str(pathGT):
             ood_gts = np.where((ood_gts==14), 255, ood_gts)
             ood_gts = np.where((ood_gts<20), 0, ood_gts)
+            ood_gts = np.where((ood_gts==255), 1, ood_gts)
+
+        if "fs" in str(pathGT):
+            ood_gts = np.where((ood_gts==255), 1, ood_gts)
+
+        if "FS" in str(pathGT):
             ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
         if 1 not in np.unique(ood_gts):
