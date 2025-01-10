@@ -44,6 +44,7 @@ def main():
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--method', default="msp") #msp, maxlogit, maxentropy
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
@@ -101,17 +102,22 @@ def main():
         # Calcola il punteggio di anomalia MSP
         #anomaly_result = 1.0 - void_probabilities  # Anomalia come 1 - P(Void)
 
-        ## QUESTO è MSP
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
-
-        ## QUESTO è MAXENTROPY
-        #probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
-        #entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
-        #anomaly_result = entropy
-
-        #QUESTO è MAXLOGIT
-        # Calcola il logit massimo per ogni pixel (prima di softmax)
-        #anomaly_result = -np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        if args.method == "msp":
+            ## QUESTO è MSP
+            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        elif args.method == "maxentropy":
+            ## QUESTO è MAXENTROPY
+            probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
+            entropy = -np.sum(probabilities * np.log(probabilities + 1e-12), axis=0)  # Aggiungi un epsilon per evitare log(0)
+            anomaly_result = entropy
+        elif args.method == "maxlogit":
+            #QUESTO è MAXLOGIT
+            # Calcola il logit massimo per ogni pixel (prima di softmax)
+            max_logits, _ = torch.max(result, dim=0)
+            anomaly_result = max_logits.data.cpu().numpy()
+        else:
+            print("Errore nella scelta del method")
+            return -1
 
         pathGT = path.replace("images", "labels_masks")   
         pathGT = osp.splitext(pathGT)[0] + ".png"
@@ -140,6 +146,12 @@ def main():
         if "Streethazard" in pathGT:
             ood_gts = np.where((ood_gts==14), 255, ood_gts)
             ood_gts = np.where((ood_gts<20), 0, ood_gts)
+            ood_gts = np.where((ood_gts==255), 1, ood_gts)
+
+        if "fs" in str(pathGT):
+            ood_gts = np.where((ood_gts==255), 1, ood_gts)
+
+        if "FS" in str(pathGT):
             ood_gts = np.where((ood_gts==255), 1, ood_gts)
 
         if 1 not in np.unique(ood_gts):
@@ -180,5 +192,5 @@ if __name__ == '__main__':
     main()
 
 
-#python evalAnomaly1.py --input '../Validation_Dataset/RoadAnomaly21/images/*.png' --loadModel 'bisenetv2.py' --loadWeights '../trained_models/bisenet_cityscapes.pth'
-#python evalAnomaly1.py --input '../Validation_Dataset/RoadAnomaly21/images/*.png' --loadModel 'erfnet.py' --loadWeights '../trained_models/erfnet_cityscapes_EIML+CE.pth'
+#python evalAnomaly_E+D.py --input '../Validation_Dataset/RoadAnomaly21/images/*.png' --loadModel 'bisenetv2.py' --loadWeights '../trained_models/bisenet_cityscapes.pth' --method 'msp'
+#python evalAnomaly_E+D.py --input '../Validation_Dataset/RoadAnomaly21/images/*.png' --loadModel 'erfnet.py' --loadWeights '../trained_models/erfnet_cityscapes_EIML+CE.pth'
