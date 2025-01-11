@@ -98,9 +98,8 @@ def main():
 
         # Seleziona la metrica in base all'argomento
         if args.metric == 'msp-temperature':
-            # MSP (Maximum Softmax Probability)
-            scaled_result = result / args.temperature
-            probabilities = torch.softmax(scaled_result.squeeze(0), dim=0).data.cpu().numpy()
+            # MSP (Maximum Softmax Probability) with temperature scaling
+            probabilities = torch.softmax(result.squeeze(0) / args.temperature, dim=0).data.cpu().numpy()
             anomaly_result = 1.0 - np.max(probabilities, axis=0)
 
         elif args.metric == 'msp':
