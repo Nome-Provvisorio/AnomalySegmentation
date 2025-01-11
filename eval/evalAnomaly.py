@@ -94,7 +94,7 @@ def main():
             result = model(images)
 
 
-        anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+        #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         # Seleziona la metrica in base all'argomento
         if args.metric == 'msp-temperature':
@@ -104,7 +104,8 @@ def main():
 
         elif args.metric == 'msp':
             # MSP (Maximum Softmax Probability)
-            anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
+            probabilities = torch.softmax(result.squeeze(0), dim=0).data.cpu().numpy()
+            anomaly_result = 1.0 - np.max(probabilities, axis=0)
 
         elif args.metric == 'maxentropy':
             # Entropia massima
