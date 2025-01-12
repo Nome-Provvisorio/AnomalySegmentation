@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import os
 from pathlib import Path
-
+import time
 import cv2
 import glob
 import torch
@@ -26,6 +26,12 @@ NUM_CLASSES = 20
 # gpu training specific
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
+from fvcore.nn import FlopCountAnalysis
+
+def calculate_flops(model, input_tensor):
+    # Calcola i FLOPs per il modello e un singolo input
+    flops = FlopCountAnalysis(model, input_tensor)
+    return flops.total()
 
 def main():
     parser = ArgumentParser()
@@ -49,6 +55,11 @@ def main():
     args = parser.parse_args()
     anomaly_score_list = []
     ood_gts_list = []
+    total_inference_time = 0  # Variabile per accumulare il tempo totale di inferenza
+    num_images = 0  # Contatore per il numero di immagini elaborate
+    # Variabili per il calcolo dei FLOPs medi
+    total_flops = 0
+    num_images = 0
 
     if not os.path.exists('results.txt'):
         open('results.txt', 'w').close()
@@ -90,10 +101,19 @@ def main():
         print(f"Processing image: {path}")  # Log percorso immagine
         images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
         images = images.permute(0,3,1,2)
+        image = Image.open(path).convert('RGB')
+        image_tensor = torch.from_numpy(np.array(image)).unsqueeze(0).float().permute(0, 3, 1, 2).cuda()
+
+        # Calcola i FLOPs per l'immagine corrente
+        flops = calculate_flops(model, image_tensor)
+        total_flops += flops  # Somma i FLOPs totali
+        start_time = time.time()  # Inizio del calcolo del tempo di inferenza
         with torch.no_grad():
             result = model(images)
-
-
+        end_time = time.time()  # Fine del calcolo del tempo di inferenza
+        inference_time = end_time - start_time  # Calcola il tempo di inferenza per questa immagine
+        total_inference_time += inference_time  # Accumula il tempo totale
+        num_images += 1  # Incrementa il contatore delle immagini
         #anomaly_result = 1.0 - np.max(result.squeeze(0).data.cpu().numpy(), axis=0)
 
         # Seleziona la metrica in base all'argomento
@@ -158,7 +178,15 @@ def main():
         torch.cuda.empty_cache()
 
     file.write( "\n")
-
+    if num_images > 0:
+        avg_inference_time = total_inference_time / num_images
+        print(f"Tempo medio di inferenza per immagine: {avg_inference_time:.4f} secondi")
+        file.write(f"\nTempo medio di inferenza per immagine: {avg_inference_time:.4f} secondi\n")
+        avg_flops_per_inference = total_flops / num_images
+        print(f"FLOPs medi per inferenza: {avg_flops_per_inference:.4f}")
+    else:
+        print("Nessuna immagine processata per il calcolo del tempo medio di inferenza.")
+        print("Nessuna immagine processata. Impossibile calcolare la media dei FLOPs.")
     ood_gts = np.array(ood_gts_list)
     anomaly_scores = np.array(anomaly_score_list)
     if len(ood_gts) == 0 or len(anomaly_scores) == 0:
