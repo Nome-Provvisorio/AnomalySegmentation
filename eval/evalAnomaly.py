@@ -14,6 +14,7 @@ from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr, plot_bar
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
 import psutil
 import time
+from fvcore.nn import FlopCountAnalysis
 
 seed = 42
 
@@ -27,6 +28,12 @@ NUM_CLASSES = 20
 # gpu training specific
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
+
+
+def calculate_flops(model, input_tensor):
+    # Calcola i FLOPs per il modello e un singolo input
+    flops = FlopCountAnalysis(model, input_tensor)
+    return flops.total()
 
 def get_model_size(model):
     """Calculate model size in MB"""
@@ -129,7 +136,7 @@ def main():
     
     anomaly_score_list = []
     ood_gts_list = []
-    
+    total_flops = 0
     # Initialize timing metrics
     total_inference_time = 0
     num_processed_images = 0
@@ -138,6 +145,12 @@ def main():
         print(f"Processing image: {path}")
         images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float()
         images = images.permute(0,3,1,2)
+        image = Image.open(path).convert('RGB')
+        image_tensor = torch.from_numpy(np.array(image)).unsqueeze(0).float().permute(0, 3, 1, 2).cuda()
+
+        # Calcola i FLOPs per l'immagine corrente
+        flops = calculate_flops(model, image_tensor)
+        total_flops += flops  # Somma i FLOPs totali
         if not args.cpu:
             images = images.cuda()
             
@@ -218,6 +231,11 @@ def main():
     file.write(f"\nCPU Memory: {cpu_mem_end - cpu_mem_start:.2f} MB")
     file.write(f"\nGPU Memory Allocated: {gpu_mem_end - gpu_mem_start:.2f} MB")
     file.write(f"\nGPU Memory Reserved: {gpu_reserved_end - gpu_reserved_start:.2f} MB")
+    if num_processed_images > 0:
+        avg_flops_per_inference = total_flops / num_processed_images
+        print(f"FLOPs medi per inferenza: {avg_flops_per_inference:.4f}")
+    else:
+        print("Nessuna immagine processata. Impossibile calcolare la media dei FLOPs.")
 
     # Process results if we have valid data
     if len(ood_gts_list) > 0 and len(anomaly_score_list) > 0:
