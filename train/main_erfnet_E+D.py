@@ -173,9 +173,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
             # Forward pass
             logits = model(inputs, only_encode=encoder)
             # Calcolo delle loss
-            loss1 = criterion1(logits, targets[:, 0])
+            #loss1 = criterion1(logits, targets[:, 0])
             loss2 = criterion2(logits, targets[:, 0])
-            loss = loss1 + loss2
+            loss = loss2
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
@@ -197,9 +197,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
                 # Forward pass
                 outputs = model(inputs, only_encode=encoder)
                 # Calcolo delle loss
-                loss1 = criterion1(outputs, targets[:, 0])
+                #loss1 = criterion1(outputs, targets[:, 0])
                 loss2 = criterion2(outputs, targets[:, 0])
-                loss = loss1 + loss2
+                loss = loss2
                 # calculate iou
                 preds = outputs.argmax(dim=1)
                 total_iou += calculate_iou(preds, targets, NUM_CLASSES).mean().item()
@@ -219,50 +219,50 @@ def main():
     batch_size = 4
     height = 512
     num_epochs = 50
+    encoder_first = True
     model_file = importlib.import_module("erfnet")
     model = model_file.ERFNet(NUM_CLASSES)
     model.cuda()
-    '''
-    model = torch.nn.DataParallel(model).cuda()
-    print("========== ENCODER TRAINING ===========")
-    weight = torch.ones(NUM_CLASSES)
-    weight[0] = 2.3653597831726	
-    weight[1] = 4.4237880706787	
-    weight[2] = 2.9691488742828	
-    weight[3] = 5.3442072868347	
-    weight[4] = 5.2983593940735	
-    weight[5] = 5.2275490760803	
-    weight[6] = 5.4394111633301	
-    weight[7] = 5.3659925460815	
-    weight[8] = 3.4170460700989	
-    weight[9] = 5.2414722442627	
-    weight[10] = 4.7376127243042	
-    weight[11] = 5.2286224365234	
-    weight[12] = 5.455126285553	
-    weight[13] = 4.3019247055054	
-    weight[14] = 5.4264230728149	
-    weight[15] = 5.4331531524658	
-    weight[16] = 5.433765411377	
-    weight[17] = 5.4631009101868	
-    weight[18] = 5.3947434425354
-    weight[19] = 0
-    weight = weight.cuda()
-    # Trasformazione per input + Dataset + Dataloader
-    co_transform = MyCoTransform(True, augment=True, height=height)
-    co_transform_val = MyCoTransform(True, augment=False, height=height)
-    dataset_train = cityscapes(datadir, co_transform, 'train')
-    dataset_val = cityscapes(datadir, co_transform_val, 'val')
-    train_loader = DataLoader(dataset_train, num_workers=num_workers, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(dataset_val, num_workers=num_workers, batch_size=batch_size, shuffle=False)
-    # Ottimizzatore e criterio di perdita
-    #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
-    optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4) 
-    #criterion1 = CrossEntropyLoss2d(weight)
-    criterion1 = FocalLoss(weight=weight)
-    criterion2 = IsoMaxPlusLossSecondPart()
-    # Esegui il training
-    train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, True)
-    '''
+    if encoder_first:
+        model = torch.nn.DataParallel(model).cuda()
+        print("========== ENCODER TRAINING ===========")
+        weight = torch.ones(NUM_CLASSES)
+        weight[0] = 2.3653597831726	
+        weight[1] = 4.4237880706787	
+        weight[2] = 2.9691488742828	
+        weight[3] = 5.3442072868347	
+        weight[4] = 5.2983593940735	
+        weight[5] = 5.2275490760803	
+        weight[6] = 5.4394111633301	
+        weight[7] = 5.3659925460815	
+        weight[8] = 3.4170460700989	
+        weight[9] = 5.2414722442627	
+        weight[10] = 4.7376127243042	
+        weight[11] = 5.2286224365234	
+        weight[12] = 5.455126285553	
+        weight[13] = 4.3019247055054	
+        weight[14] = 5.4264230728149	
+        weight[15] = 5.4331531524658	
+        weight[16] = 5.433765411377	
+        weight[17] = 5.4631009101868	
+        weight[18] = 5.3947434425354
+        weight[19] = 0
+        weight = weight.cuda()
+        # Trasformazione per input + Dataset + Dataloader
+        co_transform = MyCoTransform(True, augment=True, height=height)
+        co_transform_val = MyCoTransform(True, augment=False, height=height)
+        dataset_train = cityscapes(datadir, co_transform, 'train')
+        dataset_val = cityscapes(datadir, co_transform_val, 'val')
+        train_loader = DataLoader(dataset_train, num_workers=num_workers, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(dataset_val, num_workers=num_workers, batch_size=batch_size, shuffle=False)
+        # Ottimizzatore e criterio di perdita
+        #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
+        optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4) 
+        #criterion1 = CrossEntropyLoss2d(weight)
+        criterion1 = FocalLoss(weight=weight)
+        criterion2 = IsoMaxPlusLossSecondPart()
+        # Esegui il training
+        train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, True)
     print("========== DECODER TRAINING ===========")
     weight = torch.ones(NUM_CLASSES)
     weight[0] = 2.8149201869965	
@@ -294,11 +294,10 @@ def main():
     train_loader = DataLoader(dataset_train, num_workers=num_workers, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(dataset_val, num_workers=num_workers, batch_size=batch_size, shuffle=False)
     #carico l'encoder
-    '''
-    pretrainedEnc = next(model.children()).encoder
-    model = model_file.ERFNet(NUM_CLASSES, encoder=pretrainedEnc) 
-    model = torch.nn.DataParallel(model).cuda()
-    '''
+    if encoder_first:
+        pretrainedEnc = next(model.children()).encoder
+        model = model_file.ERFNet(NUM_CLASSES, encoder=pretrainedEnc) 
+        model = torch.nn.DataParallel(model).cuda()
     # Ottimizzatore e criterio di perdita
     #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
     optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4) 
@@ -314,4 +313,4 @@ if __name__ == '__main__':
     main()
 
 
-#python main3.py
+#python main_erfnet_E+D.py

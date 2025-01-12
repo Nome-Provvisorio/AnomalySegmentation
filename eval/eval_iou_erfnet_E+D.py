@@ -45,29 +45,31 @@ def main(args):
     model = ERFNet(NUM_CLASSES)
     if (not args.cpu):
         model.cuda()
-    '''
-    def load_my_state_dict(model, state_dict):  #custom function to load model when not all dict elements
-        own_state = model.state_dict()
-        for name, param in state_dict.items():
-            if name not in own_state:
-                if name.startswith("module."):
-                    own_state[name.split("module.")[-1]].copy_(param)
+    if args.E_ED:
+        def load_my_state_dict(model, state_dict):  #custom function to load model when not all dict elements
+            own_state = model.state_dict()
+            for name, param in state_dict.items():
+                if name not in own_state:
+                    if name.startswith("module."):
+                        own_state[name.split("module.")[-1]].copy_(param)
+                    else:
+                        print(name, " not loaded")
+                        continue
                 else:
-                    print(name, " not loaded")
-                    continue
-            else:
-                own_state[name].copy_(param)
-        return model
-    model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
-    '''
-    model.load_state_dict(torch.load(weightspath, map_location=lambda storage, loc: storage))
+                    own_state[name].copy_(param)
+            return model
+        model = load_my_state_dict(model, torch.load(weightspath, map_location=lambda storage, loc: storage))
+    else:
+        model.load_state_dict(torch.load(weightspath, map_location=lambda storage, loc: storage))
     model.eval()
     print ("Model and weights LOADED successfully")
     if(not os.path.exists(args.datadir)):
         print ("Error: datadir could not be loaded")
     loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset), num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
-    iouEvalVal = iouEval(NUM_CLASSES, 19)
-    #iouEvalVal = iouEval(NUM_CLASSES, -1)
+    if args.ignore_void_label:
+        iouEvalVal = iouEval(NUM_CLASSES, 19)
+    else:
+        iouEvalVal = iouEval(NUM_CLASSES, -1)
     start = time.time()
     for step, (images, labels, filename, filenameGt) in enumerate(loader):
         if (not args.cpu):
@@ -109,7 +111,8 @@ def main(args):
     print(iou_classes_str[16], "train")
     print(iou_classes_str[17], "motorcycle")
     print(iou_classes_str[18], "bicycle")
-    #print(iou_classes_str[19], "void")
+    if args.ignore_void_label == False:
+        print(iou_classes_str[19], "void")
     print("=======================================")
     iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
     print ("MEAN IoU: ", iouStr, "%")
@@ -125,7 +128,9 @@ if __name__ == '__main__':
     parser.add_argument('--num-workers', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--cpu', action='store_true')
+    parser.add_argument('--E_ED', default=True) #di default modell trainato prima con encoder, poi encoder e decoder
+    parser.add_argument('--ignore_void_label', default=True)
     main(parser.parse_args())
 
 
-#python eval_iou3.py --datadir ../datasets/ --subset val --loadWeights erfnet_cityscapes_EIML+CE.pth
+#python eval_iou_erfnet_E+D.py --datadir ../datasets/ --subset val --loadWeights erfnet_cityscapes_EIML_E_ED.pth
