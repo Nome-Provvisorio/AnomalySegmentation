@@ -60,5 +60,13 @@ python eval_forwardTime.py
 
 **NOTE**: Paper values were obtained with a single Titan X (Maxwell) and a Jetson TX1 using the original Torch code. The pytorch code is a bit faster, but cudahalf (FP16) seems to give problems at the moment for some pytorch versions so this code only runs at FP32 (a bit slower).
 
+## evalAnomaly_E+D.py
+This code can be used to produce anomaly segmentation results on various anomaly metrics and on various ways in which models are trained.
 
+**Options:** This file have the same options of evalAnomaly.py plus the following: Option '--method' msp, maxlogit, maxentropy. Option '--E_ED' by default model towed first with encoder, then encoder and decoder (default: True). Option '--network' erfnet, enet, bisenet. Option '--one_class_selection' use only the selected class for validation (default: -1). 
+
+**Examples:**
+```
+python evalAnomaly_E+D.py --input '../Validation_Dataset/RoadAnomaly21/images/*.png' --loadModel 'bisenetv2.py' --loadWeights '../trained_models/bisenet_cityscapes.pth' --method 'msp' --network bisenet
+```
 
