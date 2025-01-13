@@ -3,33 +3,28 @@
 # Eduardo Romera
 #######################
 
+import importlib
 import os
 import random
 import time
-import numpy as np
-import torch
-import math
-
-from PIL import Image, ImageOps
 from argparse import ArgumentParser
+from shutil import copyfile
 
-from matplotlib import pyplot as plt
-from torch.optim import SGD, Adam, lr_scheduler
-from torch.autograd import Variable
-from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, CenterCrop, Normalize, Resize, Pad
-from torchvision.transforms import ToTensor, ToPILImage
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from PIL import Image, ImageOps
+from matplotlib import pyplot as plt
+from torch.autograd import Variable
+from torch.optim import Adam, lr_scheduler
+from torch.utils.data import DataLoader
+from torchvision.transforms import Resize
+from torchvision.transforms import ToTensor, ToPILImage
 
-from dataset import VOC12, cityscapes
+from dataset import cityscapes
+from iouEval import iouEval, getColorEntry
 from transform import Relabel, ToLabel, Colorize
 from visualize import Dashboard
-
-import importlib
-from iouEval import iouEval, getColorEntry
-
-from shutil import copyfile
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 20  # pascal=22, cityscapes=20
@@ -215,9 +210,6 @@ def train(args, model, enc=False):
 
     # criterion = LogitNormalizationLoss(weight)
     # criterion = CrossEntropyLoss2d(weight)
-    # criterion = MaxLogitLoss()
-    # criterion = MaxEntropyLoss()
-    # criterion = BCEWithLogitsLoss(weight)
     criterion = CombinedLossFocalAndLogit(weight=weight)
     # criterion = CombinedLossCrossAndLogit(weight=weight)
 
