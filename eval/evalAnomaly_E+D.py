@@ -152,13 +152,35 @@ def main():
     file.write(f"\nModel Size: {model_size:.2f} MB")
     '''
     VOID_CLASS_INDEX = args.one_class_selection
-    
+    #step = 0
     for path in glob.glob(os.path.expanduser(str(args.input[0]))):
         print(path)
         images = torch.from_numpy(np.array(Image.open(path).convert('RGB'))).unsqueeze(0).float().cuda()
         images = images.permute(0,3,1,2)
         with torch.no_grad():
             result = model(images)[0]
+        '''
+        if step == 2:
+            pred = torch.argmax(result, dim=0)
+            prediction_image = pred.cpu().numpy() # Porta l'immagine su CPU e converti in numpy
+            import matplotlib.pyplot as plt
+
+            # Mostra l'immagine sorgente
+            plt.subplot(1, 2, 1)
+            plt.imshow(Image.open(path).convert('RGB'))
+            plt.title("Source Image")
+            plt.axis('off')
+
+             # Mostra la mappa di segmentazione
+            plt.subplot(1, 2, 2)
+            plt.imshow(prediction_image, cmap='tab20')
+            plt.colorbar()
+            plt.title("Predicted Segmentation")
+            plt.axis('off')
+
+            plt.show()
+        step += 1
+        '''
         '''
         # Calcola i FLOPs per l'immagine corrente
         image = Image.open(path).convert('RGB')
