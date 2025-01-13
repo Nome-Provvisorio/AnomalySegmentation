@@ -7,7 +7,8 @@ For instructions, please refer to the README in each folder:
 * [train](train) contains tools for training the network for semantic segmentation.
 * [eval](eval) contains tools for evaluating/visualizing the network's output and performing anomaly segmentation.
 * [imagenet](imagenet) Contains script and model for pretraining ERFNet's encoder in Imagenet.
-* [trained_models](trained_models) Contains the trained models used in the papers. 
+* [trained_models](trained_models) Contains the trained models used in the papers.
+* [img](img) Contains the image of the models trained. 
 
 ## Requirements:
 
