@@ -56,40 +56,40 @@ CUDA_VISIBLE_DEVICES=0,1 python main.py ...
 ```
 # Training ENet in Pytorch
 Code for training ENet, we can set the parameter for the training changing the variable in the main():
-    datadir = "../datasets"
-    num_workers = 4
-    batch_size = 4
-    height = 512
-    num_epochs = 50
-    weight
-    optimizer
-    criterion
+- datadir = "../datasets"
+- num_workers = 4
+- batch_size = 4
+- height = 512
+- num_epochs = 50
+- weight
+- optimizer
+- criterion
 ```
 python main_enet.py
 ```
 # Training BiseNetV2 in Pytorch
 Code for training BiseNetV2, we can set the parameter for the training changing the variable in the main():
-    datadir = "../datasets"
-    num_workers = 4
-    batch_size = 4
-    height = 512
-    num_epochs = 50
-    weight
-    optimizer
-    criterion
+- datadir = "../datasets"
+- num_workers = 4
+- batch_size = 4
+- height = 512
+- num_epochs = 50
+- weight
+- optimizer
+- criterion
 ```
 python main_bisenet.py
 ```
 # Alternetive training of ERFNet in Pytorch
 Code for training ERFNet, we can train the model first by training only the encoder and then train the previously trained encoder plus the decoder by setting the value of encoder_first to True, we can set the parameter for the training changing the variable in the main():
-    datadir = "../datasets"
-    num_workers = 4
-    batch_size = 4
-    height = 512
-    num_epochs = 50
-    weight
-    optimizer
-    criterion
+- datadir = "../datasets"
+- num_workers = 4
+- batch_size = 4
+- height = 512
+- num_epochs = 50
+- weight
+- optimizer
+- criterion
 ```
 python main_erfnet_E+D.py
 ```
