@@ -32,8 +32,6 @@ For instructions, please refer to the README in each folder:
   * **erfnet_pretrained.pth:** erfnet trained whit the CE loss training first the encoder and after the encoder and decoder on 150 epoch
   * **model_best_combined_CROSS_LOGIT.pth:** erfnet trained whit the CE+LN loss training first the encoder and after the encoder and decoder on 50 epoch
   * **model_best_combined_FOCAL_LOGIT.pth:** erfnet trained whit the FL+LN loss training first the encoder and after the encoder and decoder on 50 epoch
-  * **model_best_enc_enhenced.pth.tar:** erfnet only encoder trained whit the CE loss on 50 epoch
   * **model_best_log_norm.pth:** erfnet trained whit the LN loss training first the encoder and after the encoder and decoder on 50 epoch
-  * **model_encoder_best_enhanced.pth:** erfnet only encoder trained whit the CE loss on 50 epoch
 
 * Anomaly Inference Command:```python evalAnomaly.py --input '/home/shyam/ViT-Adapter/segmentation/unk-dataset/RoadAnomaly21/images/*.png```. Change the dataset path ```'/home/shyam/ViT-Adapter/segmentation/unk-dataset/RoadAnomaly21/images/*.png```accordingly.
