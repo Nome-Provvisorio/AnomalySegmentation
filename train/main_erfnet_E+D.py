@@ -245,9 +245,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
 def main():
     datadir = "/kaggle/input/cityscapes-correctlabels/Cityscape"
     num_workers = 4
-    batch_size = 4
+    batch_size = 6
     height = 512
-    num_epochs = 50
+    num_epochs = 3
     encoder_first = True
     crit = 2 #0 EIML, 1 EIML+CE, 2 EIML+FL
     model_file = importlib.import_module("erfnet")
