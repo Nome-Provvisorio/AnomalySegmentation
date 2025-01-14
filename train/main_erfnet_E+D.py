@@ -218,15 +218,18 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         print(f"Average epoch loss: {average_epoch_loss_val}")
     if 1 == 1:
         print("----- FACCIO IL GRAFICO--------")
-        # Creazione del grafico
+    # Creazione del grafico
         fig, ax1 = plt.subplots(figsize=(10, 6))
 
         # Loss
-        epochs = list(range(1,num_epochs + 1))
+        epochs = list(range(1, num_epochs + 1))
         ax1.plot(epochs, epoch_losses, label='Loss', color='darkred', linewidth=2.5)
         ax1.set_xlabel('Epoch', fontsize=12)
         ax1.set_ylabel('Loss', color='darkred', fontsize=12)
         ax1.tick_params(axis='y', labelcolor='darkred')
+
+        # Linee sottili per le tacche delle ordinate di ax1 (Loss)
+        ax1.yaxis.grid(True, linestyle='-', color='gray', linewidth=0.5, alpha=0.5)
 
         # mIoU
         ax2 = ax1.twinx()
@@ -234,10 +237,13 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         ax2.set_ylabel('mIoU', color='darkblue', fontsize=12)
         ax2.tick_params(axis='y', labelcolor='darkblue')
 
+        # Linee sottili per le tacche delle ordinate di ax2 (mIoU)
+        ax2.yaxis.grid(True, linestyle='-', color='gray', linewidth=0.5, alpha=0.5)
+
         # Titolo e layout
         plt.title('Andamento della Loss e mIoU', fontsize=14)
         fig.tight_layout()
-        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.grid(False)  # Disabilita la griglia per l'asse x
 
         # Salvataggio del grafico
         plt.savefig('Loss_and_mIoU.png', dpi=300)
