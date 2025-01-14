@@ -159,7 +159,7 @@ class FocalLoss(torch.nn.Module):
         else:  # 'none'
             return focal_loss
 
-def train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, encoder):
+def train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, encoder, crit):
     epoch_losses=[]
     val_miou=[]
     for epoch in range(num_epochs):
@@ -174,9 +174,12 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
             # Forward pass
             logits = model(inputs, only_encode=encoder)
             # Calcolo delle loss
-            loss1 = criterion1(logits, targets[:, 0])
-            loss2 = criterion2(logits, targets[:, 0])
-            loss = loss1+loss2
+            if crit == 0:
+                loss = criterion2(logits, targets[:, 0])
+            else:
+                loss1 = criterion1(logits, targets[:, 0])
+                loss2 = criterion2(logits, targets[:, 0])
+                loss = loss1 + loss2
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
@@ -189,6 +192,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         print("----- VALIDATING - EPOCH", epoch, "-----")
         model.eval()
         total_iou = 0
+        epoch_loss_val = []
         with torch.no_grad():
             for images, labels in val_loader:
                 images = images.cuda()
@@ -198,14 +202,20 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
                 # Forward pass
                 outputs = model(inputs, only_encode=encoder)
                 # Calcolo delle loss
-                loss1 = criterion1(outputs, targets[:, 0])
-                loss2 = criterion2(outputs, targets[:, 0])
-                loss = loss2
+                if crit == 0:
+                    loss = criterion2(outputs, targets[:, 0])
+                else:
+                    loss1 = criterion1(outputs, targets[:, 0])
+                    loss2 = criterion2(outputs, targets[:, 0])
+                    loss = loss1 + loss2
+                epoch_loss_val.append(loss.item())
                 # calculate iou
                 preds = outputs.argmax(dim=1)
                 total_iou += calculate_iou(preds, targets, NUM_CLASSES).mean().item()
                 val_miou.append(total_iou/ len(val_loader))
+        average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
         print(f"Validation Mean IoU: {total_iou / len(val_loader)}")
+        print(f"Average epoch loss: {average_epoch_loss_val}")
     if encoder == False:
         # Creazione del grafico
         fig, ax1 = plt.subplots(figsize=(10, 6))
@@ -238,8 +248,9 @@ def main():
     height = 512
     num_epochs = 50
     encoder_first = True
+    crit = 2 #0 EIML, 1 EIML+CE, 2 EIML+FL
     model_file = importlib.import_module("erfnet")
-    model = model_file.ERFNet(NUM_CLASSES)
+    model = model_file.Net(NUM_CLASSES)
     model.cuda()
     if encoder_first:
         model = torch.nn.DataParallel(model).cuda()
@@ -276,11 +287,14 @@ def main():
         # Ottimizzatore e criterio di perdita
         #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
         optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4) 
-        #criterion1 = CrossEntropyLoss2d(weight)
-        criterion1 = FocalLoss(weight=weight)
+        criterion1 = None
+        if crit == 1:
+            criterion1 = CrossEntropyLoss2d(weight)
+        if crit == 2:
+            criterion1 = FocalLoss(weight=weight)
         criterion2 = IsoMaxPlusLossSecondPart()
         # Esegui il training
-        train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, True)
+        train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, True, crit)
     print("========== DECODER TRAINING ===========")
     weight = torch.ones(NUM_CLASSES)
     weight[0] = 2.8149201869965	
@@ -319,11 +333,14 @@ def main():
     # Ottimizzatore e criterio di perdita
     #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
     optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4) 
-    #criterion1 = CrossEntropyLoss2d(weight)
-    criterion1 = FocalLoss(weight=weight)
+    criterion1 = None
+    if crit == 1:
+        criterion1 = CrossEntropyLoss2d(weight)
+    if crit == 2:
+        criterion1 = FocalLoss(weight=weight)
     criterion2 = IsoMaxPlusLossSecondPart()
     # Esegui il training
-    train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, False)
+    train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, False, crit)
     #save the model
     torch.save(model.state_dict(), "erfnet_cityscapes.pth")
 
