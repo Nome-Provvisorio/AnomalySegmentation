@@ -216,7 +216,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
         print(f"Validation Mean IoU: {total_iou / len(val_loader)}")
         print(f"Average epoch loss: {average_epoch_loss_val}")
-    if encoder == False:
+    if 1 == 1:
         # Creazione del grafico
         fig, ax1 = plt.subplots(figsize=(10, 6))
 
