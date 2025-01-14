@@ -254,7 +254,7 @@ def main():
     num_workers = 4
     batch_size = 6
     height = 512
-    num_epochs = 30
+    num_epochs = 2
     encoder_first = True
     crit = 2 #0 EIML, 1 EIML+CE, 2 EIML+FL
     model_file = importlib.import_module("erfnet")
