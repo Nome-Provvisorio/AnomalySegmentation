@@ -161,6 +161,7 @@ class FocalLoss(torch.nn.Module):
 
 def train_model(model, train_loader, val_loader, optimizer, criterion1, criterion2, num_epochs, encoder):
     epoch_losses=[]
+    val_miou=[]
     for epoch in range(num_epochs):
         print("----- TRAINING - EPOCH", epoch, "-----")
         model.train()
@@ -173,9 +174,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
             # Forward pass
             logits = model(inputs, only_encode=encoder)
             # Calcolo delle loss
-            #loss1 = criterion1(logits, targets[:, 0])
+            loss1 = criterion1(logits, targets[:, 0])
             loss2 = criterion2(logits, targets[:, 0])
-            loss = loss2
+            loss = loss1+loss2
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
@@ -197,21 +198,38 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
                 # Forward pass
                 outputs = model(inputs, only_encode=encoder)
                 # Calcolo delle loss
-                #loss1 = criterion1(outputs, targets[:, 0])
+                loss1 = criterion1(outputs, targets[:, 0])
                 loss2 = criterion2(outputs, targets[:, 0])
                 loss = loss2
                 # calculate iou
                 preds = outputs.argmax(dim=1)
                 total_iou += calculate_iou(preds, targets, NUM_CLASSES).mean().item()
+                val_miou.append(total_iou)
         print(f"Validation Mean IoU: {total_iou / len(val_loader)}")
     if encoder == False:
-        epochs = list(range(1, num_epochs + 1))  # Epoche da 1 a N
-        plt.plot(epochs, epoch_losses, label='Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Andamento della Loss')
-        plt.legend()
-        plt.savefig('Loss.png')
+        # Creazione del grafico
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        # Loss
+        ax1.plot(num_epochs, epoch_losses, label='Loss', color='darkred', linewidth=2.5)
+        ax1.set_xlabel('Epoch', fontsize=12)
+        ax1.set_ylabel('Loss', color='darkred', fontsize=12)
+        ax1.tick_params(axis='y', labelcolor='darkred')
+
+        # mIoU
+        ax2 = ax1.twinx()
+        ax2.plot(num_epochs, val_miou, label='mIoU', color='darkblue', linewidth=2.5)
+        ax2.set_ylabel('mIoU', color='darkblue', fontsize=12)
+        ax2.tick_params(axis='y', labelcolor='darkblue')
+
+        # Titolo e layout
+        plt.title('Andamento della Loss e mIoU', fontsize=14)
+        fig.tight_layout()
+        plt.grid(True, linestyle='--', alpha=0.6)
+
+        # Salvataggio del grafico
+        plt.savefig('Loss_and_mIoU.png', dpi=300)
+        plt.show()
 
 def main():
     datadir = "../datasets"
