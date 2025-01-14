@@ -218,13 +218,30 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         print(f"Average epoch loss: {average_epoch_loss_val}")
     if 1 == 1:
         print("----- FACCIO IL GRAFICO--------")
-        print("Epoch losses: ",epoch_losses)
-        epochs = list(range(1, num_epochs + 1))  # Epoche da 1 a N
-        plt.plot(epochs, epoch_losses, label='Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Andamento della Loss')
-        plt.legend()
+        # Creazione del grafico
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        # Loss
+        epochs = list(range(1,num_epochs + 1))
+        ax1.plot(epochs, epoch_losses, label='Loss', color='darkred', linewidth=2.5)
+        ax1.set_xlabel('Epoch', fontsize=12)
+        ax1.set_ylabel('Loss', color='darkred', fontsize=12)
+        ax1.tick_params(axis='y', labelcolor='darkred')
+
+        # mIoU
+        # ax2 = ax1.twinx()
+        # ax2.plot(epochs, val_miou, label='mIoU', color='darkblue', linewidth=2.5)
+        # ax2.set_ylabel('mIoU', color='darkblue', fontsize=12)
+        # ax2.tick_params(axis='y', labelcolor='darkblue')
+
+        # Titolo e layout
+        plt.title('Andamento della Loss e mIoU', fontsize=14)
+        fig.tight_layout()
+        plt.grid(True, linestyle='--', alpha=0.6)
+
+        # Salvataggio del grafico
+        plt.savefig('Loss_and_mIoU.png', dpi=300)
+        plt.show()
 
 def main():
     datadir = "/kaggle/input/cityscapes-correctlabels/Cityscape"
