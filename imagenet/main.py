@@ -60,6 +60,21 @@ parser.add_argument('--pretrained', dest='pretrained', action='store_true',
 
 best_prec1 = 0
 
+def max_logit_loss(outputs, targets):
+    max_logits, _ = outputs.max(dim=1)
+    target_logits = outputs.gather(1, targets.unsqueeze(1)).squeeze(1)
+    loss = (max_logits - target_logits).clamp(min=-1e5, max=1e5)  # Clipping
+    return loss.mean()
+
+
+def max_entropy_loss(outputs, targets):
+    log_probs = torch.log_softmax(outputs, dim=1)  # Compute log probabilities
+    max_log_probs, _ = log_probs.max(dim=1)       # Maximum log probability per sample
+    target_log_probs = log_probs.gather(1, targets.unsqueeze(1)).squeeze(1)  # Log probs of target classes
+    
+    loss = (max_log_probs - target_log_probs).clamp(min=-1e5, max=1e5)  # Clipping for stability
+    return loss.mean()
+
 def main():
     global args, best_prec1
     args = parser.parse_args()
@@ -77,9 +92,12 @@ def main():
 
     model = torch.nn.DataParallel(model).cuda()
 
+    
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
-
+    #criterion = nn.CrossEntropyLoss().cuda()
+    #criterion = lambda outputs, targets: max_logit_loss(outputs, targets)
+    criterion = lambda outputs, targets: max_entropy_loss(outputs, targets)
+    
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
@@ -251,10 +269,10 @@ def validate(val_loader, model, criterion):
 
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+def save_checkpoint(state, is_best, filename='checkpoint_pretrain.pth.tar'):
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(filename, 'model_best_pretrain.pth.tar')
 
 
 class AverageMeter(object):
