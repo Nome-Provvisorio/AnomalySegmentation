@@ -212,9 +212,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
                 # calculate iou
                 preds = outputs.argmax(dim=1)
                 total_iou += calculate_iou(preds, targets, NUM_CLASSES).mean().item()
-        val_miou.append(total_iou)
+        val_miou.append((total_iou / len(val_loader))*100)
         average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
-        print(f"Validation Mean IoU: {total_iou}")
+        print(f"Validation Mean IoU: {(total_iou / len(val_loader))*100}")
         print(f"Average epoch loss: {average_epoch_loss_val}")
     if 1 == 1:
         print("----- FACCIO IL GRAFICO--------")
@@ -248,7 +248,7 @@ def main():
     num_workers = 4
     batch_size = 6
     height = 512
-    num_epochs = 1
+    num_epochs = 3
     encoder_first = True
     crit = 2 #0 EIML, 1 EIML+CE, 2 EIML+FL
     model_file = importlib.import_module("erfnet")
