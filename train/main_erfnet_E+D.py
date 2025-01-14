@@ -213,6 +213,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
                 preds = outputs.argmax(dim=1)
                 total_iou += calculate_iou(preds, targets, NUM_CLASSES).mean().item()
                 val_miou.append(total_iou/ len(val_loader))
+                len(val_loader)
         average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
         print(f"Validation Mean IoU: {total_iou / len(val_loader)}")
         print(f"Average epoch loss: {average_epoch_loss_val}")
@@ -229,10 +230,11 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         ax1.tick_params(axis='y', labelcolor='darkred')
 
         # mIoU
-        # ax2 = ax1.twinx()
-        # ax2.plot(epochs, val_miou, label='mIoU', color='darkblue', linewidth=2.5)
-        # ax2.set_ylabel('mIoU', color='darkblue', fontsize=12)
-        # ax2.tick_params(axis='y', labelcolor='darkblue')
+        ax2 = ax1.twinx()
+        len(val_loader)
+        ax2.plot(epochs, val_miou, label='mIoU', color='darkblue', linewidth=2.5)
+        ax2.set_ylabel('mIoU', color='darkblue', fontsize=12)
+        ax2.tick_params(axis='y', labelcolor='darkblue')
 
         # Titolo e layout
         plt.title('Andamento della Loss e mIoU', fontsize=14)
