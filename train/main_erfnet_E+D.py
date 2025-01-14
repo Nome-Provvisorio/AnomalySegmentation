@@ -232,7 +232,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         plt.show()
 
 def main():
-    datadir = "../datasets"
+    datadir = "/kaggle/input/cityscapes-correctlabels/Cityscape"
     num_workers = 4
     batch_size = 4
     height = 512
