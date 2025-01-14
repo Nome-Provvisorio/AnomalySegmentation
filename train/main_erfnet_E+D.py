@@ -330,7 +330,7 @@ def main():
     #carico l'encoder
     if encoder_first:
         pretrainedEnc = next(model.children()).encoder
-        model = model_file.ERFNet(NUM_CLASSES, encoder=pretrainedEnc) 
+        model = model_file.Net(NUM_CLASSES, encoder=pretrainedEnc) 
         model = torch.nn.DataParallel(model).cuda()
     # Ottimizzatore e criterio di perdita
     #optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0005)
