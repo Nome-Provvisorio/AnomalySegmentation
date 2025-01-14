@@ -214,7 +214,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
                 total_iou += calculate_iou(preds, targets, NUM_CLASSES).mean().item()
         val_miou.append(total_iou)
         average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
-        print(f"Validation Mean IoU: {total_iou}")
+        print(f"Validation Mean IoU: {total_iou*100}")
         print(f"Average epoch loss: {average_epoch_loss_val}")
     if 1 == 1:
         print("----- FACCIO IL GRAFICO--------")
