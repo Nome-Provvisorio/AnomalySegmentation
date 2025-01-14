@@ -218,7 +218,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         print(f"Average epoch loss: {average_epoch_loss_val}")
     if 1 == 1:
         print("----- FACCIO IL GRAFICO--------")
-    # Creazione del grafico
+        # Creazione del grafico
         fig, ax1 = plt.subplots(figsize=(10, 6))
 
         # Loss
@@ -254,7 +254,7 @@ def main():
     num_workers = 4
     batch_size = 6
     height = 512
-    num_epochs = 2
+    num_epochs = 30
     encoder_first = True
     crit = 2 #0 EIML, 1 EIML+CE, 2 EIML+FL
     model_file = importlib.import_module("erfnet")
