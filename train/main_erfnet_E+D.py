@@ -222,14 +222,15 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         fig, ax1 = plt.subplots(figsize=(10, 6))
 
         # Loss
-        ax1.plot(num_epochs, epoch_losses, label='Loss', color='darkred', linewidth=2.5)
+        epochs = list(range(1,num_epochs + 1))
+        ax1.plot(epochs, epoch_losses, label='Loss', color='darkred', linewidth=2.5)
         ax1.set_xlabel('Epoch', fontsize=12)
         ax1.set_ylabel('Loss', color='darkred', fontsize=12)
         ax1.tick_params(axis='y', labelcolor='darkred')
 
         # mIoU
         ax2 = ax1.twinx()
-        ax2.plot(num_epochs, val_miou, label='mIoU', color='darkblue', linewidth=2.5)
+        ax2.plot(epochs, val_miou, label='mIoU', color='darkblue', linewidth=2.5)
         ax2.set_ylabel('mIoU', color='darkblue', fontsize=12)
         ax2.tick_params(axis='y', labelcolor='darkblue')
 
@@ -247,7 +248,7 @@ def main():
     num_workers = 4
     batch_size = 6
     height = 512
-    num_epochs = 3
+    num_epochs = 1
     encoder_first = True
     crit = 2 #0 EIML, 1 EIML+CE, 2 EIML+FL
     model_file = importlib.import_module("erfnet")
