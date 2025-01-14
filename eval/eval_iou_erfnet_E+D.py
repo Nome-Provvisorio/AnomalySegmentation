@@ -19,7 +19,7 @@ from torchvision.transforms import Compose, CenterCrop, Normalize, Resize
 from torchvision.transforms import ToTensor, ToPILImage
 
 from dataset import cityscapes
-from erfnet import ERFNet
+from erfnet import Net
 from transform import Relabel, ToLabel, Colorize
 from iouEval import iouEval, getColorEntry
 
@@ -42,7 +42,7 @@ def main(args):
     weightspath = args.loadDir + args.loadWeights
     print ("Loading model: " + modelpath)
     print ("Loading weights: " + weightspath)
-    model = ERFNet(NUM_CLASSES)
+    model = Net(NUM_CLASSES)
     if (not args.cpu):
         model.cuda()
     if args.E_ED:
