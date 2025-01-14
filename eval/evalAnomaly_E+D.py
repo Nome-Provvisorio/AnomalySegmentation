@@ -10,7 +10,7 @@ import os.path as osp
 from argparse import ArgumentParser
 from ood_metrics import fpr_at_95_tpr, calc_metrics, plot_roc, plot_pr,plot_barcode
 from sklearn.metrics import roc_auc_score, roc_curve, auc, precision_recall_curve, average_precision_score
-from erfnet import ERFNet
+from erfnet import Net
 from enet import ENet
 from bisenetv2 import BiSeNetV2
 
@@ -114,7 +114,7 @@ def main():
     file.write(f"\nGPU Memory Reserved: {gpu_reserved_start:.2f} MB")
     '''
     if args.network == "erfnet":
-        model = ERFNet(NUM_CLASSES)
+        model = Net(NUM_CLASSES)
     elif args.network == "enet":
         model = ENet(NUM_CLASSES)
     elif args.network == "bisenet":
