@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from torch.optim import Adam
 from dataset import cityscapes
 import importlib
+from iouEval import iouEval, getColorEntry
 #from erfnet import ERFNet
 
 NUM_CLASSES = 20
@@ -193,6 +194,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
         model.eval()
         total_iou = 0
         epoch_loss_val = []
+        iouEvalVal = iouEval(NUM_CLASSES)
         with torch.no_grad():
             for images, labels in val_loader:
                 images = images.cuda()
@@ -210,12 +212,17 @@ def train_model(model, train_loader, val_loader, optimizer, criterion1, criterio
                     loss = loss1 + loss2
                 epoch_loss_val.append(loss.item())
                 # calculate iou
+                iouEvalVal.addBatch(outputs.max(1)[1].unsqueeze(1).data, targets.data)
                 preds = outputs.argmax(dim=1)
                 total_iou += calculate_iou(preds, targets, NUM_CLASSES).mean().item()
-        val_miou.append((total_iou / len(val_loader))*100)
+        #val_miou.append((total_iou / len(val_loader))*100)
         average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
         print(f"Validation Mean IoU: {(total_iou / len(val_loader))*100}")
         print(f"Average epoch loss: {average_epoch_loss_val}")
+        iouVal, iou_classes = iouEvalVal.getIoU()
+        iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
+        print ("EPOCH IoU on VAL set (without the void class): ", iouStr, "%") 
+        val_miou.append(iouVal*100)
     if 1 == 1:
         print("----- FACCIO IL GRAFICO--------")
         # Creazione del grafico
